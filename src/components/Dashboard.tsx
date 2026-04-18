@@ -1,175 +1,221 @@
 import { useState, useEffect } from 'react';
 import { Book } from '../types';
-import { BookOpen, CheckCircle2, CircleDashed, ArrowRight } from 'lucide-react';
-import { clsx } from 'clsx';
 
 interface DashboardProps {
   onSelectBook: (id: number) => void;
   onAddBook: () => void;
+  onLogCurrent: () => void;
 }
 
-export default function Dashboard({ onSelectBook, onAddBook }: DashboardProps) {
+export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: DashboardProps) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
+  const [currentBook, setCurrentBook] = useState<Book | null>(null);
+  const [activeTab, setActiveTab] = useState<'reading' | 'queue' | 'archive'>('reading');
 
   useEffect(() => {
-    fetch('/api/books')
-      .then(res => res.json())
-      .then(data => {
-        setBooks(data);
-        setLoading(false);
-      });
+    const fetchData = async () => {
+      try {
+        const booksRes = await fetch('/api/books');
+        if (!booksRes.ok) throw new Error(`Books fetch failed: ${booksRes.status}`);
+        
+        const contentType = booksRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+           console.error("Dashboard received non-JSON for books");
+           throw new Error("Non-JSON received for books list");
+        }
+
+        const booksData: Book[] = await booksRes.json();
+        setBooks(booksData);
+        
+        const active = booksData.find(b => b.status === 'IN_PROGRESS') || booksData.find(b => b.status === 'NOT_STARTED') || booksData[0];
+        setCurrentBook(active || null);
+
+        const statsRes = await fetch('/api/dashboard/status');
+        if (statsRes.ok) {
+          const statsData = await statsRes.json();
+          setStats({
+            pagesReadToday: statsData.pagesReadToday || 0,
+            totalBooks: statsData.libraryStats?.total || booksData.length,
+            completedBooks: statsData.libraryStats?.completed || 0
+          });
+        }
+      } catch (e) {
+        console.error("Dashboard fetch error:", e);
+      }
+    };
+    fetchData();
   }, []);
 
-  if (loading) return <div className="flex justify-center py-20 font-mono text-sm opacity-50">INITIALIZING SYSTEMS...</div>;
+  const progress = currentBook 
+    ? Math.round(((currentBook.current_page || 0) / currentBook.total_pages) * 100) 
+    : 0;
 
-  if (books.length === 0) {
-    return (
-      <div className="flex flex-col items-center justify-center py-20 text-center">
-        <div className="w-16 h-16 bg-white border border-[#dadada] rounded-2xl flex items-center justify-center mb-6 shadow-sm">
-          <BookOpen className="w-8 h-8 text-[#8e8e8e]" />
-        </div>
-        <h2 className="text-xl font-semibold mb-2">No books found</h2>
-        <p className="text-[#8e8e8e] mb-8 max-w-xs">Start your reading journey by adding your first book to the tracker.</p>
-        <button 
-          onClick={onAddBook}
-          className="px-6 py-2.5 bg-[#141414] text-white rounded-full text-sm font-medium hover:bg-opacity-90 transition-all"
-        >
-          Add My First Book
-        </button>
-      </div>
-    );
-  }
-
-  const currentlyReading = books.find(b => b.status === 'IN_PROGRESS') || books[0];
-  const libraryBooks = books.filter(b => b.id !== currentlyReading?.id);
+  const filteredBooks = books.filter(b => {
+    if (activeTab === 'reading') return b.status === 'IN_PROGRESS' || b.status === 'NOT_STARTED';
+    if (activeTab === 'archive') return b.status === 'COMPLETED';
+    return false; // Queue logic not explicitly separate in backend yet
+  });
 
   return (
-    <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-20">
-      {/* Left Column: Hero Section */}
-      <section className="flex flex-col justify-between border-r border-ink/10 pr-20 min-h-[600px]">
-        {currentlyReading ? (
-          <div className="flex flex-col md:flex-row gap-12">
-            <div className="flex-1">
-              <span className="label-caps mb-8 block">Currently Reading</span>
-              <h2 className="bold-title mb-10 group cursor-pointer" onClick={() => onSelectBook(currentlyReading.id)}>
-                {currentlyReading.title}
-              </h2>
-              
-              <div className="flex items-center gap-10">
-                <div className="massive-stat text-[120px]">
-                  {Math.round((currentlyReading.current_page / currentlyReading.total_pages) * 100)}%
-                </div>
-                <div className="space-y-1">
-                  <p className="text-sm font-bold uppercase tracking-widest">{currentlyReading.current_page} of {currentlyReading.total_pages} pages</p>
-                  <p className="text-sm font-bold uppercase tracking-widest text-accent">{currentlyReading.total_pages - currentlyReading.current_page} pages left</p>
-                  <p className="text-muted italic">{currentlyReading.author}</p>
-                </div>
-              </div>
+    <div className="space-y-12">
+      {/* Today's Progress Section */}
+      <section className="mb-10 flex items-center justify-between bg-surface-container-low/50 border border-outline-variant/10 rounded-xl px-4 py-3">
+        <div className="flex items-center gap-3">
+          <span className="material-symbols-outlined text-tertiary">history_edu</span>
+          <span className="font-label text-[12px] font-medium text-on-surface-variant tracking-wide">
+            Today: <span className="text-on-surface font-semibold">{stats.pagesReadToday > 0 ? `${stats.pagesReadToday} pages read` : 'No reading logged today'}</span>
+          </span>
+        </div>
+        <button onClick={onLogCurrent} className="font-label text-[10px] uppercase tracking-widest text-primary font-bold">Log Now</button>
+      </section>
 
-              <div className="w-full h-2 bg-ink/5 mt-10 relative">
-                <div 
-                  className="absolute h-full bg-accent transition-all duration-1000"
-                  style={{ width: `${(currentlyReading.current_page / currentlyReading.total_pages) * 100}%` }}
-                />
-              </div>
+      {/* Current Focus Section */}
+      <section className="mb-16">
+        <div className="flex items-center justify-between mb-6">
+          <span className="font-label text-on-surface-variant text-[0.75rem] uppercase tracking-widest font-semibold">Current Focus</span>
+          <button onClick={onAddBook} className="flex items-center gap-1.5 text-primary hover:text-primary-dim transition-colors">
+            <span className="material-symbols-outlined text-sm">add</span>
+            <span className="font-label text-[11px] font-semibold uppercase tracking-widest">New Entry</span>
+          </button>
+        </div>
 
-              <div className="mt-20">
-                <span className="label-caps mb-6 block">Historical View</span>
-                <div className="flex items-end gap-3 h-32">
-                  {[30, 50, 20, 80, 45, 60, 10].map((h, i) => (
-                    <div 
-                      key={i} 
-                      className={clsx(
-                        "flex-1 transition-all duration-500",
-                        i === 3 ? "bg-accent" : "bg-ink"
-                      )}
-                      style={{ height: `${h}%` }}
-                    />
-                  ))}
+        {currentBook ? (
+          <div className="bg-surface-container-highest rounded-[1.5rem] p-6 md:p-10 flex flex-col md:flex-row gap-10 items-center md:items-start shadow-md border border-outline-variant/10 relative overflow-hidden group">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+            <div 
+              onClick={() => onSelectBook(currentBook.id)}
+              className="w-56 h-80 flex-shrink-0 bg-surface-container-highest overflow-hidden rounded-lg shadow-[0_20px_50px_rgba(48,51,49,0.18)] z-10 cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
+            >
+               {currentBook.cover_url ? (
+                  <img src={currentBook.cover_url} alt={currentBook.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+                    <span className="material-symbols-outlined text-6xl">menu_book</span>
+                  </div>
+                )}
+            </div>
+            <div className="flex flex-col flex-grow w-full z-10">
+              <div className="flex items-center gap-2 mb-4">
+                <span className="inline-block w-2.5 h-2.5 rounded-full bg-tertiary shadow-[0_0_8px_rgba(89,99,66,0.4)]"></span>
+                <span className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant">Active Selection</span>
+              </div>
+              <h2 className="serif-text text-5xl text-on-surface mb-3 leading-tight">{currentBook.title}</h2>
+              <p className="font-label text-lg text-on-surface-variant mb-10 italic">{currentBook.author}</p>
+              <div className="space-y-8">
+                <div>
+                  <div className="flex justify-between items-end mb-4">
+                    <span className="font-label text-[11px] text-on-surface-variant uppercase tracking-[0.15em] font-medium">Reading Progress</span>
+                    <span className="serif-text italic text-3xl text-primary">{progress}%</span>
+                  </div>
+                  <div className="h-3 w-full bg-surface-container-highest/60 rounded-full overflow-hidden border border-outline-variant/10">
+                    <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+                  </div>
+                  <div className="flex justify-between mt-4">
+                    <p className="font-label text-[12px] text-on-surface-variant">{(currentBook.current_page || 0)} of {currentBook.total_pages} pages</p>
+                    <p className="font-label text-[12px] text-primary/70 font-medium">{currentBook.total_pages - (currentBook.current_page || 0)} pages left</p>
+                  </div>
                 </div>
+                <button 
+                  onClick={() => onLogCurrent()}
+                  className="w-full px-8 py-5 bg-primary text-on-primary rounded-xl font-label font-semibold text-sm tracking-[0.15em] uppercase hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-4 group"
+                >
+                  <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">menu_book</span>
+                  Resume Reading
+                </button>
               </div>
             </div>
-
-            {currentlyReading.cover_url && (
-              <div 
-                onClick={() => onSelectBook(currentlyReading.id)}
-                className="w-full md:w-[280px] aspect-[3/4] bg-ink/5 shadow-2xl rotate-2 hover:rotate-0 transition-all duration-500 cursor-pointer overflow-hidden rounded-sm border border-ink/10"
-              >
-                <img 
-                  src={currentlyReading.cover_url} 
-                  alt={currentlyReading.title} 
-                  className="w-full h-full object-cover"
-                  referrerPolicy="no-referrer"
-                />
-              </div>
-            )}
           </div>
         ) : (
-          <div className="py-20 text-muted italic">Initialize a project to view the command center.</div>
+          <div className="bg-surface-container-highest/30 rounded-[1.5rem] p-16 text-center border-2 border-dashed border-outline-variant/20">
+            <p className="serif-text text-xl text-on-surface-variant">Your sanctum is quiet.</p>
+            <button onClick={onAddBook} className="mt-4 font-label text-[11px] uppercase tracking-widest font-bold text-primary">New Entry</button>
+          </div>
         )}
       </section>
 
-      {/* Right Column: Library Sidebar */}
-      <aside className="flex flex-col gap-10">
-        <div>
-          <span className="label-caps mb-6 block">Your Library</span>
-          <ul className="space-y-4">
-            {(libraryBooks.length > 0 ? libraryBooks : books).map(book => (
-              <li 
-                key={book.id} 
-                onClick={() => onSelectBook(book.id)}
-                className="group flex gap-4 py-4 border-b border-ink/10 cursor-pointer hover:border-ink transition-all"
-              >
-                {book.cover_url ? (
-                  <div className="w-12 h-16 flex-shrink-0 overflow-hidden bg-ink/5 border border-ink/5 rounded-sm">
-                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+      {/* Search & Filter */}
+      <div className="flex items-center justify-between mb-8 border-b border-outline-variant/10 pb-4">
+        <div className="flex gap-8 text-on-surface-variant font-label text-sm">
+          <button 
+            onClick={() => setActiveTab('reading')}
+            className={`${activeTab === 'reading' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+          >
+            Currently Reading
+          </button>
+          <button 
+            onClick={() => setActiveTab('queue')}
+            className={`${activeTab === 'queue' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+          >
+            Queue
+          </button>
+          <button 
+            onClick={() => setActiveTab('archive')}
+            className={`${activeTab === 'archive' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+          >
+            Archive
+          </button>
+        </div>
+        <span className="material-symbols-outlined text-outline-variant hover:text-primary cursor-pointer transition-colors">search</span>
+      </div>
+
+      {/* Book Grid */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12">
+        {filteredBooks.map((book) => {
+          const bookProgress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
+          return (
+            <article key={book.id} className="group cursor-pointer" onClick={() => onSelectBook(book.id)}>
+              <div className="flex gap-5 items-start">
+                <div className="w-24 h-36 flex-shrink-0 bg-surface-container-low overflow-hidden rounded shadow-[2px_6px_16px_rgba(48,51,49,0.06)] transition-transform duration-500 group-hover:-translate-y-1">
+                   {book.cover_url ? (
+                      <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+                        <span className="material-symbols-outlined text-sm">book</span>
+                      </div>
+                    )}
+                </div>
+                <div className="flex flex-col h-full py-0.5 min-w-0">
+                  <div className="flex items-center gap-1.5 mb-2">
+                    <span className={`inline-block w-1.5 h-1.5 rounded-full ${book.status === 'COMPLETED' ? 'bg-outline' : book.status === 'IN_PROGRESS' ? 'bg-tertiary' : 'bg-outline-variant/40'}`}></span>
+                    <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">{book.status.replace('_', ' ')}</span>
                   </div>
-                ) : (
-                  <div className="w-12 h-16 flex-shrink-0 bg-ink/5 border border-ink/5 flex items-center justify-center rounded-sm">
-                    <BookOpen className="w-4 h-4 text-muted" />
-                  </div>
-                )}
-                <div className="flex-1 min-w-0">
-                  <div className="flex justify-between items-start">
-                    <div className="book-info truncate">
-                      <h4 className="font-bold text-base leading-tight group-hover:text-accent transition-colors truncate">{book.title}</h4>
-                      <p className="text-xs text-muted font-medium truncate">{book.author}</p>
+                  <h3 className="serif-text text-xl text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors truncate">{book.title}</h3>
+                  <p className="font-label text-[11px] text-on-surface-variant mb-4 italic truncate">{book.author}</p>
+                  <div className="mt-auto">
+                    <div className="h-[4px] w-full bg-surface-container-highest rounded-full overflow-hidden">
+                      <div className="h-full bg-tertiary rounded-full progress-bar-fill" style={{ width: `${bookProgress}%` }}></div>
                     </div>
-                    <span className={clsx(
-                      "text-[9px] px-2 py-0.5 border border-ink rounded-full uppercase font-bold tracking-widest flex-shrink-0 ml-2",
-                      book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
-                    )}>
-                      {book.status.replace('_', ' ')}
-                    </span>
+                    <p className="font-label text-[10px] text-on-surface-variant mt-2">{bookProgress}% completed</p>
                   </div>
                 </div>
-              </li>
-            ))}
-          </ul>
-        </div>
+              </div>
+            </article>
+          );
+        })}
+      </div>
 
-        <div>
-          <span className="label-caps mb-6 block">Performance Stats</span>
-          <div className="flex gap-10">
-            <div className="stat-box flex-1">
-              <p className="label-caps text-[9px] mb-2">Reading Streak</p>
-              <span className="text-2xl font-bold tracking-tight">12 Days</span>
+      {/* Asymmetric Detail Section */}
+      <section className="mt-24 bg-surface-container-low p-10 md:p-12 rounded-2xl flex flex-col md:flex-row gap-12 items-center">
+        <div className="w-full md:w-1/2">
+          <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Reading Stats</span>
+          <h3 className="serif-text text-3xl mb-4 leading-tight">Your focused sanctuary.</h3>
+          <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Record your thoughts as you progress through your library. Wisdom is meant to be archived.</p>
+          <button onClick={() => setActiveTab('archive')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Archive →</button>
+        </div>
+        <div className="w-full md:w-1/2 flex justify-center">
+          <div className="grid grid-cols-2 gap-6">
+            <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32">
+              <span className="serif-text text-3xl text-primary">{stats.totalBooks}</span>
+              <span className="font-label text-[9px] uppercase tracking-widest text-outline mt-1">Books</span>
             </div>
-            <div className="stat-box flex-1">
-              <p className="label-caps text-[9px] mb-2">Avg Daily</p>
-              <span className="text-2xl font-bold tracking-tight">24 Pgs</span>
+            <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32 mt-6">
+              <span className="serif-text text-3xl text-primary">{stats.completedBooks}</span>
+              <span className="font-label text-[9px] uppercase tracking-widest text-outline mt-1">Finished</span>
             </div>
           </div>
         </div>
-
-        <button 
-          onClick={onAddBook}
-          className="bg-ink text-bg w-full py-5 font-bold text-xs uppercase tracking-[2px] mt-auto hover:opacity-80 transition-all shadow-xl shadow-black/10"
-        >
-          Initialize New Record
-        </button>
-      </aside>
+      </section>
     </div>
   );
 }

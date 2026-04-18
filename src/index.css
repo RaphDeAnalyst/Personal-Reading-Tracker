@@ -1,42 +1,99 @@
 @import "tailwindcss";
 
 @theme {
-  --color-bg: #F7F5F2;
-  --color-ink: #121212;
-  --color-accent: #D44D26;
-  --color-muted: #8E8A84;
-  --color-line: #121212;
-  
-  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
-  --font-serif: 'Georgia', serif;
+  --font-headline: "Newsreader", "serif";
+  --font-body: "Inter", "sans-serif";
+  --font-label: "Inter", "sans-serif";
 
-  @keyframes spin-slow {
-    from { transform: rotate(0deg); }
-    to { transform: rotate(360deg); }
+  --color-primary: #615e57;
+  --color-primary-dim: #55524c;
+  --color-on-error: #fff7f6;
+  --color-secondary-container: #e6e2dc;
+  --color-tertiary-dim: #4d5737;
+  --color-outline: #797b78;
+  --color-on-background: #303331;
+  --color-on-tertiary-container: #55603f;
+  --color-error: #9e422c;
+  --color-surface-container-highest: #e1e3df;
+  --color-surface-variant: #e1e3df;
+  --color-on-secondary: #fdf8f2;
+  --color-surface-container-lowest: #ffffff;
+  --color-on-tertiary-fixed: #434d2e;
+  --color-error-container: #fe8b70;
+  --color-error-dim: #5c1202;
+  --color-background: #fbf9f7;
+  --color-on-surface-variant: #5d605d;
+  --color-inverse-surface: #0d0e0e;
+  --color-on-primary-fixed: #413f39;
+  --color-tertiary-fixed: #edf9ce;
+  --color-tertiary-container: #edf9ce;
+  --color-on-primary-fixed-variant: #5e5b54;
+  --color-inverse-primary: #fef9ef;
+  --color-surface-container-low: #f5f3f1;
+  --color-on-secondary-container: #53524d;
+  --color-primary-container: #e7e2d9;
+  --color-on-secondary-fixed: #413f3b;
+  --color-surface-container-high: #e8e8e5;
+  --color-on-tertiary: #f2fed3;
+  --color-tertiary-fixed-dim: #dfeac0;
+  --color-surface-dim: #d8dbd7;
+  --color-on-primary: #fdf7ee;
+  --color-tertiary: #596342;
+  --color-surface: #fbf9f7;
+  --color-outline-variant: #b0b2af;
+  --color-secondary-fixed-dim: #d8d4ce;
+  --color-surface-bright: #fbf9f7;
+  --color-secondary: #615f5a;
+  --color-on-secondary-fixed-variant: #5d5b56;
+  --color-on-tertiary-fixed-variant: #606a49;
+  --color-primary-fixed-dim: #d9d4cb;
+  --color-surface-container: #eeeeeb;
+  --color-inverse-on-surface: #9d9d9b;
+  --color-surface-tint: #615e57;
+  --color-on-error-container: #742410;
+  --color-on-surface: #303331;
+  --color-primary-fixed: #e7e2d9;
+  --color-on-primary-container: #54514b;
+  --color-secondary-dim: #55534e;
+  --color-secondary-fixed: #e6e2dc;
+
+  @keyframes tap-scale {
+    0% { transform: scale(1); }
+    50% { transform: scale(0.96); }
+    100% { transform: scale(1); }
+  }
+}
+
+@layer base {
+  body {
+    @apply bg-background text-on-surface font-body antialiased;
+    min-height: 100dvh;
+  }
+}
+
+@layer components {
+  .serif-text {
+    @apply font-headline italic;
   }
   
-  --animate-spin-slow: spin-slow 8s linear infinite;
-}
+  .material-symbols-outlined {
+    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
+    @apply inline-block leading-none align-middle;
+  }
 
-@utility label-caps {
-  font-size: 11px;
-  text-transform: uppercase;
-  letter-spacing: 0.15em;
-  font-weight: 700;
-  color: var(--color-muted);
-}
+  .progress-bar-fill {
+    box-shadow: 0 0 4px rgba(0,0,0,0.1);
+  }
 
-@utility bold-title {
-  font-family: var(--font-serif);
-  font-size: clamp(3rem, 8vw, 5.25rem);
-  line-height: 0.9;
-  font-weight: 900;
-  letter-spacing: -0.04em;
-}
+  .no-scrollbar::-webkit-scrollbar {
+    display: none;
+  }
+  
+  .form-input-line {
+    @apply border-none bg-transparent py-4 pl-0 pr-0 transition-all border-b border-outline-variant/20 focus:border-on-surface-variant outline-none ring-0 focus:ring-0;
+  }
 
-@utility massive-stat {
-  font-family: var(--font-sans);
-  font-weight: 200;
-  letter-spacing: -0.05em;
-  line-height: 1;
+  .btn-active-scale {
+    @apply active:scale-95 transition-transform duration-200 ease-out;
+  }
 }

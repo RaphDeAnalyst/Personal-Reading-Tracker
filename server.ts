@@ -30,57 +30,85 @@ const storage = multer.diskStorage({
 
 const upload = multer({ storage: storage });
 
-// Initialize Database
-db.exec(`
-  CREATE TABLE IF NOT EXISTS books (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    title TEXT NOT NULL,
-    author TEXT,
-    total_pages INTEGER NOT NULL,
-    current_page INTEGER DEFAULT 0,
-    status TEXT DEFAULT 'NOT_STARTED',
-    mode TEXT DEFAULT 'PHYSICAL',
-    cover_url TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP
-  );
-
-  CREATE TABLE IF NOT EXISTS logs (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER NOT NULL,
-    date TEXT NOT NULL,
-    pages_read INTEGER NOT NULL,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (book_id) REFERENCES books(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS reflections (
-    id INTEGER PRIMARY KEY AUTOINCREMENT,
-    book_id INTEGER UNIQUE NOT NULL,
-    learning TEXT,
-    application TEXT,
-    disagreement TEXT,
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    FOREIGN KEY (book_id) REFERENCES books(id)
-  );
-`);
-
-// Migration: Add cover_url if it doesn't exist
-const tableInfo = db.prepare("PRAGMA table_info(books)").all() as any[];
-const hasCoverUrl = tableInfo.some(col => col.name === 'cover_url');
-if (!hasCoverUrl) {
-  db.exec("ALTER TABLE books ADD COLUMN cover_url TEXT");
-}
-
 async function startServer() {
-  const app = express();
-  const PORT = 3000;
+  try {
+    const app = express();
+    const PORT = 3000;
+
+    // Initialize Database
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS books (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        title TEXT NOT NULL,
+        author TEXT,
+        total_pages INTEGER NOT NULL,
+        current_page INTEGER DEFAULT 0,
+        status TEXT DEFAULT 'NOT_STARTED',
+        mode TEXT DEFAULT 'PHYSICAL',
+        cover_url TEXT,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+
+      CREATE TABLE IF NOT EXISTS logs (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_id INTEGER NOT NULL,
+        date TEXT NOT NULL,
+        pages_read INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (book_id) REFERENCES books(id)
+      );
+
+      CREATE TABLE IF NOT EXISTS reflections (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_id INTEGER UNIQUE NOT NULL,
+        content TEXT,
+        rating INTEGER DEFAULT 5,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        FOREIGN KEY (book_id) REFERENCES books(id)
+      );
+    `);
+
+    // Migration: Add cover_url if it doesn't exist
+    const booksInfo = db.prepare("PRAGMA table_info(books)").all() as any[];
+    if (!booksInfo.some(col => col.name === 'cover_url')) {
+      db.exec("ALTER TABLE books ADD COLUMN cover_url TEXT");
+    }
+
+    // Migration: Reflections (learning/application/disagreement -> content/rating)
+    const reflectionsInfo = db.prepare("PRAGMA table_info(reflections)").all() as any[];
+    if (reflectionsInfo.some(col => col.name === 'learning')) {
+      // Very simple migration: rename/drop and recreate or just add columns and we'll handle NULLs
+      // Since it's a personal tracker, we can just drop and recreate or carefully migrate.
+      // Better: check and add new columns, old ones stay but unused.
+      if (!reflectionsInfo.some(col => col.name === 'content')) {
+        db.exec("ALTER TABLE reflections ADD COLUMN content TEXT");
+        db.exec("ALTER TABLE reflections ADD COLUMN rating INTEGER DEFAULT 5");
+      }
+    }
+
+    // Migration: Logs (add current_page if missing)
+    const logsInfo = db.prepare("PRAGMA table_info(logs)").all() as any[];
+    if (!logsInfo.some(col => col.name === 'current_page')) {
+      db.exec("ALTER TABLE logs ADD COLUMN current_page INTEGER");
+    }
 
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
 
+  // Request logging middleware
+  app.use((req, res, next) => {
+    console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
+    next();
+  });
+
   // Health check
   app.get("/api/health", (req, res) => {
-    res.json({ status: "ok", timestamp: new Date().toISOString() });
+    try {
+      db.prepare("SELECT count(*) FROM books").get();
+      res.json({ status: "ok", timestamp: new Date().toISOString(), database: "connected" });
+    } catch (e) {
+      res.status(500).json({ status: "error", message: e instanceof Error ? e.message : String(e) });
+    }
   });
 
   // API Routes
@@ -130,33 +158,75 @@ async function startServer() {
     }
   });
 
+  // Get logs for a book
+  app.get("/api/books/:id/logs", (req, res) => {
+    try {
+      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY date DESC").all(req.params.id);
+      res.json(logs);
+    } catch (error) {
+      console.error("Error fetching logs:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Log progress
   app.post("/api/books/:id/logs", (req, res) => {
     try {
       const { id } = req.params;
-      const { pagesRead, date } = req.body;
+      const { currentPage, current_page, pagesRead, date } = req.body;
+      const effectiveCurrentPage = currentPage !== undefined ? currentPage : current_page;
+      const logDate = date || new Date().toISOString().split('T')[0];
       
       const book = db.prepare("SELECT * FROM books WHERE id = ?").get(id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
-      // Update current_page and status
-      const newCurrentPage = Math.min((book.current_page || 0) + pagesRead, book.total_pages);
+      // If absolute page is provided, use it. Otherwise use incremental.
+      let newCurrentPage;
+      let actualPagesRead = pagesRead;
+
+      if (effectiveCurrentPage !== undefined) {
+        newCurrentPage = Math.min(effectiveCurrentPage, book.total_pages);
+        actualPagesRead = Math.max(0, newCurrentPage - (book.current_page || 0));
+      } else {
+        newCurrentPage = Math.min((book.current_page || 0) + (pagesRead || 0), book.total_pages);
+        actualPagesRead = pagesRead || 0;
+      }
+
       let newStatus = book.status;
       if (newCurrentPage > 0 && newStatus === 'NOT_STARTED') {
         newStatus = 'IN_PROGRESS';
+      }
+      if (newCurrentPage === book.total_pages) {
+        newStatus = 'COMPLETED';
       }
 
       db.transaction(() => {
         db.prepare("UPDATE books SET current_page = ?, status = ? WHERE id = ?")
           .run(newCurrentPage, newStatus, id);
         
-        db.prepare("INSERT INTO logs (book_id, date, pages_read) VALUES (?, ?, ?)")
-          .run(id, date, pagesRead);
+        db.prepare("INSERT INTO logs (book_id, date, pages_read, current_page) VALUES (?, ?, ?, ?)")
+          .run(id, logDate, actualPagesRead, newCurrentPage);
       })();
 
       res.json({ success: true, current_page: newCurrentPage, status: newStatus });
     } catch (error) {
       console.error("Error logging progress:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Delete book
+  app.delete("/api/books/:id", (req, res) => {
+    try {
+      const { id } = req.params;
+      db.transaction(() => {
+        db.prepare("DELETE FROM reflections WHERE book_id = ?").run(id);
+        db.prepare("DELETE FROM logs WHERE book_id = ?").run(id);
+        db.prepare("DELETE FROM books WHERE id = ?").run(id);
+      })();
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting book:", error);
       res.status(500).json({ error: "Internal server error" });
     }
   });
@@ -194,16 +264,15 @@ async function startServer() {
   app.post("/api/books/:id/reflection", (req, res) => {
     try {
       const { id } = req.params;
-      const { learning, application, disagreement } = req.body;
+      const { content, rating } = req.body;
       
       db.prepare(`
-        INSERT INTO reflections (book_id, learning, application, disagreement)
-        VALUES (?, ?, ?, ?)
+        INSERT INTO reflections (book_id, content, rating)
+        VALUES (?, ?, ?)
         ON CONFLICT(book_id) DO UPDATE SET
-          learning=excluded.learning,
-          application=excluded.application,
-          disagreement=excluded.disagreement
-      `).run(id, learning, application, disagreement);
+          content=excluded.content,
+          rating=excluded.rating
+      `).run(id, content, rating);
 
       res.json({ success: true });
     } catch (error) {
@@ -216,8 +285,27 @@ async function startServer() {
   app.get("/api/dashboard/status", (req, res) => {
     try {
       const today = new Date().toISOString().split('T')[0];
-      const result = db.prepare("SELECT COUNT(*) as count FROM logs WHERE date = ?").get(today) as any;
-      res.json({ loggedToday: result ? result.count > 0 : false });
+      
+      // Logged today?
+      const loggedTodayResult = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE date = ?").get(today) as any;
+      const pagesReadToday = loggedTodayResult?.total || 0;
+
+      // Current focus (most recently updated book)
+      const currentFocus = db.prepare("SELECT * FROM books WHERE status = 'IN_PROGRESS' ORDER BY id DESC LIMIT 1").get() as any;
+
+      // Library snapshot
+      const totalBooks = db.prepare("SELECT COUNT(*) as count FROM books").get() as any;
+      const completedBooks = db.prepare("SELECT COUNT(*) as count FROM books WHERE status = 'COMPLETED'").get() as any;
+
+      res.json({ 
+        loggedToday: pagesReadToday > 0,
+        pagesReadToday,
+        currentFocusId: currentFocus?.id || null,
+        libraryStats: {
+          total: totalBooks?.count || 0,
+          completed: completedBooks?.count || 0
+        }
+      });
     } catch (error) {
       console.error("Error fetching dashboard status:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -242,6 +330,10 @@ async function startServer() {
   app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on http://localhost:${PORT}`);
   });
+  } catch (error) {
+    console.error("FATAL ERROR during server startup:", error);
+    process.exit(1);
+  }
 }
 
 startServer();

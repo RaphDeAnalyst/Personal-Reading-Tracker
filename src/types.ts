@@ -18,18 +18,20 @@ export interface ReadingLog {
   book_id: number;
   date: string;
   pages_read: number;
+  current_page: number;
   created_at: string;
 }
+
+export type Log = ReadingLog;
 
 export interface Reflection {
   id: number;
   book_id: number;
-  learning: string;
-  application: string;
-  disagreement: string;
+  content: string;
+  rating: number;
 }
 
 export interface BookDetail extends Book {
-  logs: ReadingLog[];
+  logs: Log[];
   reflection: Reflection | null;
 }

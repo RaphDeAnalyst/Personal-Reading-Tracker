@@ -1,247 +1,183 @@
 import { useState, useEffect } from 'react';
-import { ChevronLeft, Plus, History, CheckCircle2, Trophy, ArrowRight, Zap } from 'lucide-react';
-import { BookDetail } from '../types';
-import { clsx } from 'clsx';
+import { Book, Log } from '../types';
 
 interface BookDetailViewProps {
   bookId: number;
   onBack: () => void;
-  onReflect: () => void;
-  onUpdate: () => void;
+  onLogProgress: (bookId: number) => void;
+  onWriteReflection: (bookId: number) => void;
+  onDelete: () => void;
 }
 
-export default function BookDetailView({ bookId, onBack, onReflect, onUpdate }: BookDetailViewProps) {
-  const [book, setBook] = useState<BookDetail | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [logAmount, setLogAmount] = useState('');
-  const [isSubmitting, setIsSubmitting] = useState(false);
-
-  const fetchBook = async () => {
-    const res = await fetch(`/api/books/${bookId}`);
-    const data = await res.json();
-    setBook(data);
-    setLoading(false);
-  };
+export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onDelete }: BookDetailViewProps) {
+  const [book, setBook] = useState<Book | null>(null);
+  const [logs, setLogs] = useState<Log[]>([]);
 
   useEffect(() => {
-    fetchBook();
+    const fetchBookDetails = async () => {
+      try {
+        const bookRes = await fetch(`/api/books/${bookId}`);
+        if (!bookRes.ok) throw new Error(`Book fetch failed with status: ${bookRes.status}`);
+        
+        const contentType = bookRes.headers.get("content-type");
+        if (!contentType || !contentType.includes("application/json")) {
+          const text = await bookRes.text();
+          console.error("Non-JSON response received:", text.substring(0, 100));
+          throw new Error("Expected JSON from API but received something else.");
+        }
+
+        const data = await bookRes.json();
+        setBook(data);
+        // data.logs should already be populated by the combined /api/books/:id endpoint
+        if (data.logs) setLogs(data.logs);
+      } catch (e) {
+        console.error("Fetch detail error:", e);
+      }
+    };
+    fetchBookDetails();
   }, [bookId]);
 
-  const handleLogProgress = async () => {
-    if (!logAmount || isSubmitting) return;
-    setIsSubmitting(true);
-    
-    try {
-      await fetch(`/api/books/${bookId}/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          pagesRead: parseInt(logAmount),
-          date: new Date().toISOString().split('T')[0]
-        })
-      });
-      setLogAmount('');
-      await fetchBook();
-      onUpdate();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
+  const handleDelete = async () => {
+    if (confirm('Are you sure you want to remove this entry from your archive?')) {
+      try {
+        const res = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
+        if (res.ok) onDelete();
+      } catch (e) {
+        console.error("Delete error", e);
+      }
     }
   };
 
-  const handleMarkCompleted = async () => {
-    if (isSubmitting) return;
-    setIsSubmitting(true);
-    
-    try {
-      await fetch(`/api/books/${bookId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          status: 'COMPLETED',
-          current_page: book?.total_pages 
-        })
-      });
-      await fetchBook();
-      onReflect();
-      onUpdate();
-    } catch (e) {
-      console.error(e);
-    } finally {
-      setIsSubmitting(false);
-    }
-  };
+  if (!book) return <div className="text-center font-serif py-20 italic">Loading from archives...</div>;
 
-  if (loading || !book) return <div className="flex justify-center py-20 font-mono text-sm opacity-50">SYNCING DATA...</div>;
-
-  const progress = Math.round((book.current_page / book.total_pages) * 100);
-  const pagesRemaining = book.total_pages - book.current_page;
+  const progress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
 
   return (
-    <div className="space-y-12 animate-in fade-in duration-500">
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted hover:text-ink transition-colors text-xs font-bold uppercase tracking-widest"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Return to command center
-      </button>
+    <div className="max-w-4xl mx-auto pb-20 px-4 md:px-0">
+      {/* Detail Header */}
+      <div className="flex items-center justify-between mb-16 px-4 md:px-0">
+        <button onClick={onBack} className="flex items-center gap-2 group text-on-surface-variant hover:text-on-surface transition-colors">
+          <span className="material-symbols-outlined text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
+          <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">Library</span>
+        </button>
+        <button onClick={handleDelete} className="text-outline-variant hover:text-error transition-all p-2 rounded-full hover:bg-error/5">
+          <span className="material-symbols-outlined text-xl">delete</span>
+        </button>
+      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-20">
-        {/* Main Info */}
-        <div className="space-y-16 border-r border-ink/10 pr-10">
-          <div className="flex flex-col md:flex-row gap-12">
-            <div className="flex-1 space-y-10">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <span className={clsx(
-                    "text-[10px] font-bold px-2 py-0.5 border border-ink rounded-full uppercase tracking-wider",
-                    book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
-                  )}>
-                    {book.status.replace('_', ' ')}
-                  </span>
-                  <span className="text-[10px] font-bold border border-ink/20 text-muted px-2 py-0.5 rounded-full uppercase tracking-wider">
-                    {book.mode}
-                  </span>
-                </div>
-                <h2 className="bold-title">{book.title}</h2>
-                <p className="text-xl text-muted font-serif italic tracking-tight">{book.author || 'Unknown Author'}</p>
-              </div>
-
-              <div className="space-y-10">
-                <div className="flex items-end gap-10">
-                  <div className="massive-stat text-[140px] leading-[0.8]">
-                    {progress}%
-                  </div>
-                  <div className="pb-4">
-                    <p className="text-xl font-bold uppercase tracking-widest leading-none mb-2">{book.current_page} of {book.total_pages} pages</p>
-                    <p className="text-sm font-bold uppercase tracking-widest text-accent">{pagesRemaining} pages remaining</p>
-                  </div>
-                </div>
-                
-                <div className="h-2 w-full bg-ink/5 relative">
-                  <div 
-                    className={clsx(
-                      "absolute h-full transition-all duration-1000 ease-out",
-                      book.status === 'COMPLETED' ? "bg-emerald-500" : "bg-accent"
-                    )}
-                    style={{ width: `${progress}%` }}
-                  />
-                </div>
-              </div>
-            </div>
-
-            {book.cover_url && (
-              <div className="w-full md:w-[240px] aspect-[3/4] flex-shrink-0 bg-ink/5 border border-ink/10 shadow-xl rounded-sm overflow-hidden">
-                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
-              </div>
-            )}
-          </div>
-
-          <div className="space-y-10">
-            <div className="flex gap-4">
-              {book.status !== 'COMPLETED' ? (
-                <div className="flex-1 flex gap-4 p-8 bg-ink/5 items-center">
-                  <div className="flex-1">
-                    <label className="label-caps mb-2 block">Log Progress</label>
-                    <input 
-                      type="number" 
-                      placeholder="0"
-                      value={logAmount}
-                      onChange={(e) => setLogAmount(e.target.value)}
-                      className="bg-transparent text-3xl font-bold w-full outline-none border-b-2 border-ink/10 focus:border-ink transition-all"
-                    />
-                  </div>
-                  <button 
-                    onClick={handleLogProgress}
-                    disabled={!logAmount || isSubmitting}
-                    className="bg-ink text-bg px-10 py-5 font-bold text-xs uppercase tracking-[2px] hover:opacity-80 transition-all disabled:opacity-20"
-                  >
-                    Commit
-                  </button>
-                </div>
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
+        {/* Left: Identity Card */}
+        <div className="lg:col-span-5">
+          <div className="sticky top-28 space-y-12">
+            <div className="bg-surface-container-highest shadow-2xl rounded-2xl overflow-hidden aspect-[1/1.5] border border-outline-variant/10">
+              {book.cover_url ? (
+                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
               ) : (
-                <div className="flex-1 p-8 bg-emerald-50 border border-emerald-100 flex items-center justify-between">
-                  <div>
-                    <h4 className="font-bold text-xl text-emerald-900">Record Finalized</h4>
-                    <p className="text-emerald-700 text-sm">Target reached. Operational objective complete.</p>
-                  </div>
-                  {!book.reflection && (
-                    <button 
-                      onClick={onReflect}
-                      className="bg-emerald-600 text-white px-8 py-3 font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-500/20"
-                    >
-                      Summarize
-                    </button>
-                  )}
+                <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+                  <span className="material-symbols-outlined text-[120px]">menu_book</span>
                 </div>
-              )}
-              
-              {book.status !== 'COMPLETED' && (
-                <button 
-                  onClick={handleMarkCompleted}
-                  className="px-6 border-2 border-ink text-ink font-bold text-[10px] uppercase tracking-widest hover:bg-ink hover:text-bg transition-all"
-                >
-                  Finalize
-                </button>
               )}
             </div>
-          </div>
 
-          {book.reflection && (
-            <div className="space-y-12 pt-10 border-t border-ink/10">
-              <span className="label-caps tracking-[0.3em] font-black text-ink">Cognitive Reflection</span>
-              
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-10">
-                <div className="space-y-4">
-                  <label className="label-caps text-[9px]">The Core Insight</label>
-                  <p className="font-serif leading-relaxed text-ink/80 italic">{book.reflection.learning || 'N/A'}</p>
+            <div className="space-y-6">
+              <div>
+                <span className="font-label text-[10px] uppercase font-bold tracking-[0.25em] text-on-surface-variant block mb-3">Currently Reviewing</span>
+                <h1 className="serif-text text-5xl text-on-surface leading-tight mb-2">{book.title}</h1>
+                <p className="font-label text-xl italic text-on-surface-variant">{book.author}</p>
+              </div>
+
+              <div className="pt-8 border-t border-outline-variant/10">
+                <div className="flex justify-between items-end mb-4">
+                  <span className="font-label text-[11px] text-on-surface-variant uppercase tracking-[0.15em] font-medium">Completion status</span>
+                  <span className="serif-text italic text-4xl text-primary">{progress}%</span>
                 </div>
-                <div className="space-y-4">
-                  <label className="label-caps text-[9px]">The Application</label>
-                  <p className="font-serif leading-relaxed text-ink/80 italic">{book.reflection.application || 'N/A'}</p>
+                <div className="h-2.5 w-full bg-surface-container-highest/60 rounded-full overflow-hidden">
+                  <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-1000" style={{ width: `${progress}%` }}></div>
                 </div>
-                <div className="space-y-4">
-                  <label className="label-caps text-[9px]">The Counter-Point</label>
-                  <p className="font-serif leading-relaxed text-ink/80 italic">{book.reflection.disagreement || 'N/A'}</p>
+                <div className="flex justify-between mt-4">
+                  <p className="font-label text-[12px] text-on-surface-variant">{book.current_page || 0} of {book.total_pages} pages</p>
+                  <p className="font-label text-[12px] text-primary/70 font-medium">Started in {new Date(book.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</p>
                 </div>
               </div>
-              
-              <button 
-                onClick={onReflect}
-                className="label-caps text-[9px] hover:text-ink underline underline-offset-4"
-              >
-                Modify Reflection
-              </button>
+
+              <div className="flex flex-col gap-4 pt-8">
+                <button 
+                  onClick={() => onLogProgress(book.id)}
+                  className="w-full py-5 bg-primary text-on-primary rounded-xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-3"
+                >
+                  <span className="material-symbols-outlined text-[20px]">add</span>
+                  Record Progress
+                </button>
+                <button 
+                  onClick={() => onWriteReflection(book.id)}
+                  className="w-full py-5 border border-primary/20 bg-background text-primary rounded-xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary/5 transition-all active:scale-[0.97] flex items-center justify-center gap-3"
+                >
+                  <span className="material-symbols-outlined text-[20px]">edit_note</span>
+                  Add Reflection
+                </button>
+              </div>
             </div>
-          )}
+          </div>
         </div>
 
-        {/* Sidebar History */}
-        <aside className="space-y-10">
-          <div>
-            <span className="label-caps mb-8 block">Pulse Stream</span>
-            
-            <div className="space-y-6">
-              {book.logs.length === 0 ? (
-                <div className="text-muted text-[11px] font-bold uppercase tracking-widest">No pulses recorded</div>
-              ) : (
-                book.logs.map((log) => (
-                  <div key={log.id} className="flex justify-between items-end border-b border-ink/5 pb-4">
-                    <div>
-                      <div className="text-[11px] font-bold uppercase tracking-widest text-muted mb-1">
-                        {new Date(log.date).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
-                      </div>
-                      <div className="font-serif italic text-lg">Daily session</div>
-                    </div>
-                    <div className="massive-stat text-3xl">+{log.pages_read}</div>
+        {/* Right: Activity & Detail */}
+        <div className="lg:col-span-7 space-y-20">
+          <section>
+            <h2 className="serif-text text-3xl mb-12 flex items-center gap-4">
+              <span className="inline-block w-8 h-[1px] bg-primary/30"></span>
+              The Progress Archive
+            </h2>
+
+            <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[1px] before:bg-outline-variant/10">
+              {logs.length > 0 ? logs.map((log, index) => (
+                <div key={log.id} className="relative pl-12 flex flex-col gap-2 group">
+                  {/* Timeline Node */}
+                  <div className="absolute left-0 top-1 w-10 h-10 flex items-center justify-center bg-background z-10 transition-transform group-hover:scale-110">
+                    <div className="w-2.5 h-2.5 rounded-full border-2 border-primary bg-background shadow-[0_0_8px_rgba(97,94,87,0.3)]"></div>
                   </div>
-                ))
+
+                  <div className="flex flex-col gap-1">
+                    <div className="flex items-center gap-3">
+                      <span className="font-label text-[10px] uppercase font-bold tracking-[0.1em] text-on-surface-variant">
+                        {new Date(log.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                      </span>
+                      {index === 0 && <span className="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest">Recent</span>}
+                    </div>
+                    <p className="serif-text text-xl italic text-on-surface">“Learned {log.pages_read} more pages”</p>
+                    <p className="font-label text-[11px] text-on-surface-variant/70 italic mt-1">Found insights up to page {log.current_page}</p>
+                  </div>
+                </div>
+              )) : (
+                <div className="py-20 text-center text-outline-variant/50 serif-text text-xl italic pl-12 border-l border-outline-variant/5">
+                   No reading history found for this entry.
+                </div>
               )}
             </div>
-          </div>
-        </aside>
+          </section>
+
+          <section className="bg-surface-container-low/30 border border-outline-variant/10 rounded-2xl p-8 md:p-12 space-y-6">
+            <div className="flex items-center gap-3">
+              <span className="material-symbols-outlined text-primary">info</span>
+              <h3 className="font-label text-[11px] uppercase tracking-widest font-bold text-on-surface">Manifest Metadata</h3>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-6">
+              <div>
+                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Subject Category</span>
+                <p className="serif-text text-lg italic text-on-surface">Non-Fiction & Research</p>
+              </div>
+              <div>
+                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Physical Scope</span>
+                <p className="serif-text text-lg italic text-on-surface">{book.total_pages} pages</p>
+              </div>
+              <div className="md:col-span-2">
+                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Repository Note</span>
+                <p className="font-body text-sm leading-relaxed text-on-surface-variant italic">
+                  This work is currently under active archiving. Every recorded progress is a step towards completing the collection's wisdom.
+                </p>
+              </div>
+            </div>
+          </section>
+        </div>
       </div>
     </div>
   );

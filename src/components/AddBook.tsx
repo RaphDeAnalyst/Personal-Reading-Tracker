@@ -1,163 +1,119 @@
-import { useState, FormEvent, useRef, ChangeEvent } from 'react';
-import { ChevronLeft, Save, Upload } from 'lucide-react';
-import { ReadingMode } from '../types';
+import { useState, FormEvent } from 'react';
 
 interface AddBookProps {
   onBack: () => void;
-  onSave: () => void;
+  onAdded: () => void;
 }
 
-export default function AddBook({ onBack, onSave }: AddBookProps) {
+export default function AddBook({ onBack, onAdded }: AddBookProps) {
   const [loading, setLoading] = useState(false);
-  const [cover, setCover] = useState<File | null>(null);
-  const [coverPreview, setCoverPreview] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     author: '',
-    totalPages: '',
-    mode: 'PHYSICAL' as ReadingMode
+    total_pages: '',
+    cover_url: ''
   });
-
-  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setCover(file);
-      const reader = new FileReader();
-      reader.onloadend = () => {
-        setCoverPreview(reader.result as string);
-      };
-      reader.readAsDataURL(file);
-    }
-  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
-    if (!formData.title || !formData.totalPages) return;
-    
     setLoading(true);
     try {
-      const data = new FormData();
-      data.append('title', formData.title);
-      data.append('author', formData.author);
-      data.append('total_pages', formData.totalPages);
-      data.append('mode', formData.mode);
-      if (cover) {
-        data.append('cover', cover);
-      }
-
-      await fetch('/api/books', {
+      const res = await fetch('/api/books', {
         method: 'POST',
-        body: data
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          ...formData,
+          total_pages: parseInt(formData.total_pages),
+          status: 'NOT_STARTED'
+        })
       });
-      onSave();
+      if (res.ok) onAdded();
+      else alert('Failure to archive new entry. Check fields.');
     } catch (e) {
-      console.error(e);
+      console.error("Add book error", e);
+    } finally {
       setLoading(false);
     }
   };
 
   return (
-    <div className="max-w-2xl mx-auto">
-      <button 
-        onClick={onBack}
-        className="flex items-center gap-2 text-muted hover:text-ink mb-10 transition-colors text-xs font-bold uppercase tracking-widest"
-      >
-        <ChevronLeft className="w-4 h-4" />
-        Return to command center
-      </button>
+    <div className="max-w-2xl mx-auto py-12 px-4 md:px-0 min-h-[80vh] flex flex-col justify-center">
+      <div className="mb-12">
+        <button onClick={onBack} className="flex items-center gap-2 group text-on-surface-variant hover:text-on-surface transition-colors mb-6">
+          <span className="material-symbols-outlined text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
+          <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">Sanctum</span>
+        </button>
+        <h2 className="serif-text text-5xl text-on-surface mb-4 leading-tight">Archive New Work</h2>
+        <p className="font-label text-sm text-on-surface-variant italic max-w-md">Record a new volume into your personal archives. Wisdom begins with a single selection.</p>
+      </div>
 
-      <div className="space-y-12">
-        <h2 className="bold-title text-5xl">Add New Book</h2>
-        
-        <form onSubmit={handleSubmit} className="space-y-10">
-          <div className="space-y-3">
-            <label className="label-caps">Book Title *</label>
+      <form onSubmit={handleSubmit} className="space-y-12">
+        <div className="space-y-10">
+          <div className="group relative">
+            <span className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant block mb-1 group-focus-within:text-primary transition-colors">Volume Title</span>
             <input 
               required
-              type="text"
+              type="text" 
+              placeholder="The name of the work"
+              className="w-full form-input-line serif-text text-2xl italic placeholder:text-outline-variant/30"
               value={formData.title}
-              onChange={e => setFormData({...formData, title: e.target.value})}
-              className="w-full text-2xl font-serif py-4 bg-transparent border-b-2 border-line focus:border-accent outline-none transition-all placeholder:text-ink/20"
-              placeholder="e.g. Meditations"
+              onChange={e => setFormData({ ...formData, title: e.target.value })}
             />
           </div>
 
-          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-10">
-            <div className="space-y-3">
-              <label className="label-caps">Cover Image</label>
-              <div 
-                onClick={() => fileInputRef.current?.click()}
-                className="aspect-[3/4] border-2 border-dashed border-line/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-accent hover:bg-ink/5 transition-all overflow-hidden relative group"
-              >
-                {coverPreview ? (
-                  <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
-                ) : (
-                  <>
-                    <Upload className="w-6 h-6 text-muted mb-2 group-hover:text-accent" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted group-hover:text-accent">Upload</span>
-                  </>
-                )}
-                <input 
-                  type="file" 
-                  ref={fileInputRef} 
-                  onChange={handleFileChange} 
-                  accept="image/*" 
-                  className="hidden" 
-                />
-              </div>
-            </div>
-
-            <div className="space-y-10">
-              <div className="space-y-3">
-                <label className="label-caps">Author</label>
-                <input 
-                  type="text"
-                  value={formData.author}
-                  onChange={e => setFormData({...formData, author: e.target.value})}
-                  className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all placeholder:text-ink/20"
-                  placeholder="e.g. Marcus Aurelius"
-                />
-              </div>
-
-              <div className="grid grid-cols-2 gap-10">
-                <div className="space-y-3">
-                  <label className="label-caps">Total Pages *</label>
-                  <input 
-                    required
-                    type="number"
-                    min="1"
-                    value={formData.totalPages}
-                    onChange={e => setFormData({...formData, totalPages: e.target.value})}
-                    className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all"
-                    placeholder="0"
-                  />
-                </div>
-                
-                <div className="space-y-3">
-                  <label className="label-caps">Reading Mode</label>
-                  <select 
-                    value={formData.mode}
-                    onChange={e => setFormData({...formData, mode: e.target.value as ReadingMode})}
-                    className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="PHYSICAL">Physical</option>
-                    <option value="PDF">PDF / Digital</option>
-                  </select>
-                </div>
-              </div>
-            </div>
+          <div className="group relative">
+            <span className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant block mb-1 group-focus-within:text-primary transition-colors">Author or Creator</span>
+            <input 
+              required
+              type="text" 
+              placeholder="Who penned this wisdom?"
+              className="w-full form-input-line font-label text-lg italic placeholder:text-outline-variant/30"
+              value={formData.author}
+              onChange={e => setFormData({ ...formData, author: e.target.value })}
+            />
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+            <div className="group relative">
+              <span className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant block mb-1 group-focus-within:text-primary transition-colors">Total Pages</span>
+              <input 
+                required
+                type="number" 
+                placeholder="0"
+                className="w-full form-input-line font-label text-lg placeholder:text-outline-variant/30"
+                value={formData.total_pages}
+                onChange={e => setFormData({ ...formData, total_pages: e.target.value })}
+              />
+            </div>
+            <div className="group relative">
+              <span className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant block mb-1 group-focus-within:text-primary transition-colors">Cover URI</span>
+              <input 
+                type="url" 
+                placeholder="https://..."
+                className="w-full form-input-line font-label text-sm placeholder:text-outline-variant/30"
+                value={formData.cover_url}
+                onChange={e => setFormData({ ...formData, cover_url: e.target.value })}
+              />
+            </div>
+          </div>
+        </div>
+
+        <div className="pt-8 flex flex-col items-center gap-6">
           <button 
             type="submit"
             disabled={loading}
-            className="w-full bg-ink text-bg py-6 font-bold text-xs uppercase tracking-[3px] hover:opacity-80 transition-all disabled:opacity-50 mt-10"
+            className="w-full max-w-xs py-5 bg-primary text-on-primary rounded-xl font-label text-sm uppercase tracking-[0.2em] font-bold hover:bg-primary-dim transition-all shadow-xl active:scale-[0.97] disabled:opacity-50 flex items-center justify-center gap-4 group"
           >
-            {loading ? 'INITIALIZING...' : 'Initialize Record'}
+            {loading ? 'Archiving...' : (
+              <>
+                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">auto_stories</span>
+                Add to Collection
+              </>
+            )}
           </button>
-        </form>
-      </div>
+          <p className="font-label text-[10px] text-outline-variant uppercase tracking-widest text-center">Your history is written with every choice.</p>
+        </div>
+      </form>
     </div>
   );
 }
