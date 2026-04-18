@@ -12,6 +12,7 @@ import ReflectionView from './components/ReflectionView';
 import LogProgressView from './components/LogProgressView';
 import SuccessView from './components/SuccessView';
 import ReflectionIndexView from './components/ReflectionIndexView';
+import Sidebar from './components/Sidebar';
 import { Book } from './types';
 
 type View = 
@@ -28,6 +29,7 @@ export default function App() {
   const [loggedToday, setLoggedToday] = useState(false);
   const [currentFocusId, setCurrentFocusId] = useState<number | null>(null);
   const [showAlert, setShowAlert] = useState(true);
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
   const checkStatus = async () => {
     try {
@@ -117,9 +119,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-background text-on-surface font-body selection:bg-primary-container">
+      <Sidebar 
+        isOpen={isSidebarOpen} 
+        onClose={() => setIsSidebarOpen(!isSidebarOpen)} 
+        onNavigate={(v) => {
+          setView(v);
+          setIsSidebarOpen(false);
+        }}
+        currentView={view.type}
+      />
+
       {/* Top Alert Banner */}
       {showAlert && !loggedToday && (
-        <div className="fixed top-16 left-0 w-full z-40 bg-secondary-container/30 backdrop-blur-md border-b border-outline-variant/5">
+        <div className={`fixed top-16 right-0 w-full z-40 bg-secondary-container/30 backdrop-blur-md border-b border-outline-variant/5 transition-all duration-300`}>
           <div className="px-6 py-2.5 flex items-center justify-between max-w-5xl mx-auto">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary text-[18px]">event_note</span>
@@ -139,7 +151,7 @@ export default function App() {
       )}
 
       {/* Top Header */}
-      <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background/95 backdrop-blur-sm border-b border-outline-variant/5">
+      <header className={`fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background/95 backdrop-blur-sm border-b border-outline-variant/5 transition-all duration-300`}>
         <div className="flex items-center gap-4">
           {view.type !== 'dashboard' ? (
             <button 
@@ -155,7 +167,12 @@ export default function App() {
               <span className="material-symbols-outlined text-2xl">arrow_back</span>
             </button>
           ) : (
-            <span className="material-symbols-outlined text-primary text-2xl cursor-pointer">menu</span>
+            <button 
+              onClick={() => setIsSidebarOpen(true)}
+              className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors md:hidden"
+            >
+              <span className="material-symbols-outlined text-primary text-2xl cursor-pointer">menu</span>
+            </button>
           )}
         </div>
         <h1 
@@ -189,36 +206,37 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      {/* Bottom Navigation */}
-      <nav className="fixed bottom-0 left-0 w-full z-50 flex justify-around items-center px-4 pb-6 pt-3 bg-background/95 backdrop-blur-md shadow-[0_-4px_24px_rgba(48,51,49,0.08)] border-t border-outline-variant/5">
+      {/* Responsive Navigation DOCK (Desktop: Visible | Mobile: Hidden) */}
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden md:flex items-center gap-2 p-2 bg-background/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(48,51,49,0.12)] border border-outline-variant/10 rounded-2xl">
         <button 
           onClick={() => setView({ type: 'dashboard' })}
-          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'dashboard' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'}`}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[24px]">import_contacts</span>
-          <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Library</span>
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}>import_contacts</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Library</span>
         </button>
         <button 
           onClick={() => setView({ type: 'add' })}
-          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'add' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'}`}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'add' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[24px]">add_circle</span>
-          <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Add</span>
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'add' ? "'FILL' 1" : "'FILL' 0" }}>add_circle</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Add New</span>
         </button>
         <button 
           onClick={() => currentFocusId && setView({ type: 'log-progress', bookId: currentFocusId })}
           disabled={!currentFocusId}
-          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'log-progress' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'} ${!currentFocusId ? 'opacity-30 cursor-not-allowed' : ''}`}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocusId ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <span className="material-symbols-outlined text-[24px]">edit_note</span>
-          <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Log</span>
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'log-progress' ? "'FILL' 1" : "'FILL' 0" }}>edit_note</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Log Progress</span>
         </button>
+        <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>
         <button 
           onClick={() => setView({ type: 'reflection-index' })}
-          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'}`}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'reflection-index' || view.type === 'reflection' ? "'FILL' 1" : "'FILL' 0" }}>auto_stories</span>
-          <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Reflect</span>
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'reflection-index' || view.type === 'reflection' ? "'FILL' 1" : "'FILL' 0" }}>auto_stories</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
         </button>
       </nav>
     </div>

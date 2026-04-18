@@ -135,28 +135,35 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
       </section>
 
       {/* Search & Filter */}
-      <div className="flex items-center justify-between mb-8 border-b border-outline-variant/10 pb-4">
-        <div className="flex gap-8 text-on-surface-variant font-label text-sm">
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8 border-b border-outline-variant/10 pb-4">
+        <div className="flex gap-8 text-on-surface-variant font-label text-sm overflow-x-auto no-scrollbar w-full sm:w-auto pb-2 sm:pb-0">
           <button 
             onClick={() => setActiveTab('reading')}
-            className={`${activeTab === 'reading' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            className={`whitespace-nowrap ${activeTab === 'reading' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
             Currently Reading
           </button>
           <button 
             onClick={() => setActiveTab('queue')}
-            className={`${activeTab === 'queue' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            className={`whitespace-nowrap ${activeTab === 'queue' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
             Queue
           </button>
           <button 
             onClick={() => setActiveTab('archive')}
-            className={`${activeTab === 'archive' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            className={`whitespace-nowrap ${activeTab === 'archive' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
             Archive
           </button>
         </div>
-        <span className="material-symbols-outlined text-outline-variant hover:text-primary cursor-pointer transition-colors">search</span>
+        <div className="flex items-center gap-2 w-full sm:w-auto px-4 py-2 bg-surface-container-low rounded-lg border border-outline-variant/5">
+          <span className="material-symbols-outlined text-outline-variant text-[20px]">search</span>
+          <input 
+            type="text" 
+            placeholder="Search archive..." 
+            className="bg-transparent border-none outline-none text-xs font-label w-full sm:w-40 placeholder:text-outline-variant/50"
+          />
+        </div>
       </div>
 
       {/* Book Grid */}

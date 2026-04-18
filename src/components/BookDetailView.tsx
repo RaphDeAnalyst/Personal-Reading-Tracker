@@ -95,7 +95,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     <div className="max-w-4xl mx-auto pb-32">
       <div className="flex flex-col md:flex-row gap-12 items-start">
         {/* Book Cover & Meta */}
-        <aside className="w-full md:w-1/3 sticky top-24">
+        <aside className="w-full md:w-1/3 md:sticky md:top-24">
           <div className="relative group">
             <div className="absolute -inset-1 bg-primary/10 rounded-lg blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
             <div className="relative w-full rounded-lg shadow-2xl overflow-hidden aspect-[1/1.5] bg-surface-container">
@@ -157,8 +157,8 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         <section className="flex-1 space-y-10 w-full">
           {/* Title & Header */}
           <header className="space-y-2">
-            <h2 className="font-headline text-5xl md:text-6xl text-on-surface leading-tight font-semibold">{bookDetail.title}</h2>
-            <p className="text-xl text-on-surface-variant font-headline italic">by {bookDetail.author}</p>
+            <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-on-surface leading-tight font-semibold">{bookDetail.title}</h2>
+            <p className="text-lg sm:text-xl text-on-surface-variant font-headline italic">by {bookDetail.author}</p>
           </header>
 
           {/* Progress Section */}
