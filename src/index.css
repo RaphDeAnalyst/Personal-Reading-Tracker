@@ -1,0 +1,42 @@
+@import "tailwindcss";
+
+@theme {
+  --color-bg: #F7F5F2;
+  --color-ink: #121212;
+  --color-accent: #D44D26;
+  --color-muted: #8E8A84;
+  --color-line: #121212;
+  
+  --font-sans: 'Helvetica Neue', Helvetica, Arial, sans-serif;
+  --font-serif: 'Georgia', serif;
+
+  @keyframes spin-slow {
+    from { transform: rotate(0deg); }
+    to { transform: rotate(360deg); }
+  }
+  
+  --animate-spin-slow: spin-slow 8s linear infinite;
+}
+
+@utility label-caps {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.15em;
+  font-weight: 700;
+  color: var(--color-muted);
+}
+
+@utility bold-title {
+  font-family: var(--font-serif);
+  font-size: clamp(3rem, 8vw, 5.25rem);
+  line-height: 0.9;
+  font-weight: 900;
+  letter-spacing: -0.04em;
+}
+
+@utility massive-stat {
+  font-family: var(--font-sans);
+  font-weight: 200;
+  letter-spacing: -0.05em;
+  line-height: 1;
+}

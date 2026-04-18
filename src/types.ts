@@ -1,0 +1,34 @@
+export type BookStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
+export type ReadingMode = 'PHYSICAL' | 'PDF';
+
+export interface Book {
+  id: number;
+  title: string;
+  author: string;
+  total_pages: number;
+  current_page: number;
+  status: BookStatus;
+  mode: ReadingMode;
+  created_at: string;
+}
+
+export interface ReadingLog {
+  id: number;
+  book_id: number;
+  date: string;
+  pages_read: number;
+  created_at: string;
+}
+
+export interface Reflection {
+  id: number;
+  book_id: number;
+  learning: string;
+  application: string;
+  disagreement: string;
+}
+
+export interface BookDetail extends Book {
+  logs: ReadingLog[];
+  reflection: Reflection | null;
+}

@@ -1,0 +1,6 @@
+{
+  "name": "Personal Reading Tracker",
+  "description": "A minimal but functional personal reading tracker with progress logging, daily streaks, and book reflections.",
+  "requestFramePermissions": [],
+  "majorCapabilities": []
+}
