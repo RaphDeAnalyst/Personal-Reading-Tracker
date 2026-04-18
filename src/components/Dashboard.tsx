@@ -11,7 +11,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
-  const [activeTab, setActiveTab] = useState<'reading' | 'queue' | 'archive'>('reading');
+  const [activeTab, setActiveTab] = useState<'now' | 'next' | 'completed'>('now');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -28,7 +28,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
         const booksData: Book[] = await booksRes.json();
         setBooks(booksData);
         
-        const active = booksData.find(b => b.status === 'IN_PROGRESS');
+        const active = booksData.find(b => b.status === 'IN_PROGRESS' && (b.current_page || 0) > 0);
         setCurrentBook(active || null);
 
         const statsRes = await fetch('/api/dashboard/status');
@@ -52,9 +52,17 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
     : 0;
 
   const filteredBooks = books.filter(b => {
-    if (activeTab === 'reading') return b.status === 'IN_PROGRESS' || b.status === 'NOT_STARTED';
-    if (activeTab === 'archive') return b.status === 'COMPLETED';
-    return false; // Queue logic not explicitly separate in backend yet
+    const pages = b.current_page || 0;
+    if (activeTab === 'now') {
+      return b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED';
+    }
+    if (activeTab === 'next') {
+      return (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && pages === 0);
+    }
+    if (activeTab === 'completed') {
+      return b.status === 'COMPLETED';
+    }
+    return false;
   });
 
   return (
@@ -73,7 +81,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
       {/* Current Focus Section */}
       <section className="mb-16">
         <div className="flex items-center justify-between mb-6">
-          <span className="font-label text-on-surface-variant text-[0.75rem] uppercase tracking-widest font-semibold">Current Focus</span>
+          <span className="font-label text-on-surface-variant text-[0.75rem] uppercase tracking-widest font-semibold">Active Selection</span>
           <button onClick={onAddBook} className="flex items-center gap-1.5 text-primary hover:text-primary-dim transition-colors">
             <span className="material-symbols-outlined text-sm">add</span>
             <span className="font-label text-[11px] font-semibold uppercase tracking-widest">New Entry</span>
@@ -98,7 +106,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
             <div className="flex flex-col flex-grow w-full z-10">
               <div className="flex items-center gap-2 mb-4">
                 <span className="inline-block w-2.5 h-2.5 rounded-full bg-tertiary shadow-[0_0_8px_rgba(89,99,66,0.4)]"></span>
-                <span className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant">Active Selection</span>
+                <span className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant">Focusing on</span>
               </div>
               <h2 className="serif-text text-5xl text-on-surface mb-3 leading-tight">{currentBook.title}</h2>
               <p className="font-label text-lg text-on-surface-variant mb-10 italic">{currentBook.author}</p>
@@ -138,22 +146,22 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8 border-b border-outline-variant/10 pb-4">
         <div className="flex gap-8 text-on-surface-variant font-label text-sm overflow-x-auto no-scrollbar w-full sm:w-auto pb-2 sm:pb-0">
           <button 
-            onClick={() => setActiveTab('reading')}
-            className={`whitespace-nowrap ${activeTab === 'reading' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            onClick={() => setActiveTab('now')}
+            className={`whitespace-nowrap ${activeTab === 'now' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
-            Currently Reading
+            Now Reading
           </button>
           <button 
-            onClick={() => setActiveTab('queue')}
-            className={`whitespace-nowrap ${activeTab === 'queue' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            onClick={() => setActiveTab('next')}
+            className={`whitespace-nowrap ${activeTab === 'next' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
-            Queue
+            Up Next
           </button>
           <button 
-            onClick={() => setActiveTab('archive')}
-            className={`whitespace-nowrap ${activeTab === 'archive' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+            onClick={() => setActiveTab('completed')}
+            className={`whitespace-nowrap ${activeTab === 'completed' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
-            Archive
+            Completed
           </button>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto px-4 py-2 bg-surface-container-low rounded-lg border border-outline-variant/5">
@@ -208,7 +216,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
           <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Reading Stats</span>
           <h3 className="serif-text text-3xl mb-4 leading-tight">Your focused sanctuary.</h3>
           <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Record your thoughts as you progress through your library. Wisdom is meant to be archived.</p>
-          <button onClick={() => setActiveTab('archive')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Archive →</button>
+          <button onClick={() => setActiveTab('completed')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Completed →</button>
         </div>
         <div className="w-full md:w-1/2 flex justify-center">
           <div className="grid grid-cols-2 gap-6">
