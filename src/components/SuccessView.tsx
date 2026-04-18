@@ -1,65 +1,102 @@
 import { useEffect, useState } from 'react';
-import { Book } from '../types';
+import { BookDetail } from '../types';
 
 interface SuccessViewProps {
   bookId: number;
   onFinish: () => void;
+  onViewJournal?: () => void;
 }
 
-export default function SuccessView({ bookId, onFinish }: SuccessViewProps) {
-  const [book, setBook] = useState<Book | null>(null);
+export default function SuccessView({ bookId, onFinish, onViewJournal }: SuccessViewProps) {
+  const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
 
   useEffect(() => {
     fetch(`/api/books/${bookId}`)
       .then(res => res.json())
-      .then(setBook);
+      .then(setBookDetail);
   }, [bookId]);
 
-  if (!book) return null;
+  if (!bookDetail) return (
+    <div className="min-h-screen flex items-center justify-center">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+    </div>
+  );
 
   return (
-    <div className="min-h-[85vh] flex flex-col items-center justify-center py-12 px-4 text-center">
-      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-primary/5 rounded-full blur-[100px] -z-10 animate-pulse"></div>
-
-      <div className="mb-12 animate-bounce">
-        <span className="material-symbols-outlined text-[80px] text-tertiary">celebration</span>
-      </div>
-
-      <p className="font-label text-xs uppercase tracking-[0.3em] font-bold text-on-surface-variant mb-6">Volume Archived</p>
-      <h2 className="serif-text text-6xl md:text-7xl text-on-surface mb-4 leading-tight">Wisdom Acquired.</h2>
-      <p className="font-label text-xl italic text-primary/80 mb-16 max-w-lg">“{book.title}” has been successfully recorded into your eternal sanctuary.</p>
-
-      <div className="bg-surface-container-low/40 border border-outline-variant/10 rounded-2xl p-10 backdrop-blur-sm mb-16 flex flex-col md:flex-row gap-10 items-center">
-        <div className="w-32 h-48 bg-surface-container-highest rounded-lg shadow-2xl overflow-hidden flex-shrink-0">
-          {book.cover_url ? (
-            <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-          ) : (
-            <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-              <span className="material-symbols-outlined text-4xl">menu_book</span>
-            </div>
-          )}
-        </div>
-        <div className="text-left space-y-4">
-          <div className="flex gap-4">
-             <div className="bg-surface-container-lowest px-4 py-2 rounded-lg">
-                <span className="block font-label text-[9px] uppercase tracking-widest text-outline-variant">Total Content</span>
-                <span className="serif-text text-xl italic text-on-surface">{book.total_pages} Pages</span>
-             </div>
-             <div className="bg-surface-container-lowest px-4 py-2 rounded-lg">
-                <span className="block font-label text-[9px] uppercase tracking-widest text-outline-variant">Duration</span>
-                <span className="serif-text text-xl italic text-on-surface">Level Achieved</span>
-             </div>
+    <main className="min-h-screen flex items-center justify-center px-6 py-12">
+      {/* Success Container */}
+      <div className="max-w-md w-full text-center space-y-12 animate-in fade-in slide-in-from-bottom-8 duration-1000">
+        
+        {/* Visual Anchor: Asymmetric bookmark aesthetic */}
+        <div className="relative inline-block">
+          <div className="absolute inset-0 bg-tertiary-container rounded-full blur-3xl opacity-20 transform -translate-y-4"></div>
+          <div className="relative flex items-center justify-center w-24 h-24 mx-auto bg-surface-container-low rounded-full shadow-sm border border-outline-variant/5">
+            <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
           </div>
-          <p className="font-body text-xs text-on-surface-variant leading-relaxed italic opacity-70">This record is now locked in your library. Its wisdom remains a part of your journey forever.</p>
+          {/* Decorative Bookmark Element */}
+          <div className="absolute -right-2 top-0 w-4 h-12 bg-tertiary opacity-80 rounded-b-sm shadow-sm transition-transform duration-500 hover:scale-y-110"></div>
+        </div>
+
+        {/* Editorial Content Cluster */}
+        <div className="space-y-4">
+          <h1 className="text-4xl md:text-5xl font-headline font-medium tracking-tight text-on-surface">
+            {bookDetail.status === 'COMPLETED' ? 'Volume Archived' : 'Book completed'}
+          </h1>
+          <p className="text-on-surface-variant font-body text-lg leading-relaxed italic opacity-80">
+            {bookDetail.reflection?.content ? 'Reflection saved successfully' : 'Your journey has been recorded'}
+          </p>
+        </div>
+
+        {/* The Reading Card: Achievement Summary */}
+        <div className="bg-surface-container-low/60 backdrop-blur-sm rounded-xl p-8 space-y-6 text-left relative overflow-hidden group border border-outline-variant/10 shadow-sm">
+          <div className="absolute top-0 right-0 p-4 transition-transform group-hover:rotate-12 duration-500">
+            <span className="material-symbols-outlined text-tertiary opacity-20 text-6xl" style={{ fontVariationSettings: "'FILL' 1" }}>history_edu</span>
+          </div>
+          
+          <div className="relative z-10">
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-4">Last Archive Entry</p>
+            <div className="flex items-start gap-5">
+              <div className="w-16 h-24 bg-surface-container-highest shadow-md rounded flex-shrink-0 overflow-hidden transform transition-transform group-hover:scale-105 duration-500">
+                {bookDetail.cover_url ? (
+                  <img src={bookDetail.cover_url} alt={bookDetail.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+                    <span className="material-symbols-outlined text-2xl">menu_book</span>
+                  </div>
+                )}
+              </div>
+              <div className="space-y-1 py-1">
+                <h3 className="font-headline text-xl text-on-surface italic font-semibold">{bookDetail.title}</h3>
+                <p className="text-sm text-on-surface-variant/80">{bookDetail.total_pages} pages archived</p>
+                {/* Progress Filament */}
+                <div className="pt-5">
+                  <div className="w-32 h-[2px] bg-surface-container-highest relative">
+                    <div className="absolute inset-0 bg-tertiary w-full"></div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Action Cluster */}
+        <div className="flex flex-col items-center gap-6 pt-4">
+          <button 
+            onClick={onFinish}
+            className="w-full px-12 py-5 bg-primary text-on-primary rounded-md font-body font-bold text-sm tracking-widest uppercase shadow-xl hover:bg-primary-dim transition-all active:scale-95 duration-200"
+          >
+            Return to Dashboard
+          </button>
+          
+          <button 
+            onClick={onViewJournal}
+            className="text-on-surface-variant font-body text-sm font-semibold hover:text-on-surface transition-colors border-b border-transparent hover:border-outline-variant pb-1 flex items-center gap-2 group"
+          >
+            View Reflection Journal
+            <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+          </button>
         </div>
       </div>
-
-      <button 
-        onClick={onFinish}
-        className="px-12 py-5 bg-on-background text-background rounded-full font-label text-xs uppercase tracking-[0.25em] font-bold hover:bg-on-surface-variant transition-all shadow-xl active:scale-95"
-      >
-        Return to Library
-      </button>
-    </div>
+    </main>
   );
 }

@@ -29,6 +29,9 @@ export interface Reflection {
   book_id: number;
   content: string;
   rating: number;
+  learning?: string;
+  application?: string;
+  disagreement?: string;
 }
 
 export interface BookDetail extends Book {

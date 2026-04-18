@@ -93,6 +93,7 @@ export default function App() {
             bookId={view.bookId} 
             onBack={() => setView({ type: 'detail', bookId: view.bookId })} 
             onSaved={() => { checkStatus(); setView({ type: 'detail', bookId: view.bookId }); }} 
+            onViewJournal={(id) => setView({ type: 'reflection', bookId: id })}
           />
         );
       case 'success':
@@ -100,6 +101,7 @@ export default function App() {
           <SuccessView 
             bookId={view.bookId} 
             onFinish={() => { fetchBooks(); setView({ type: 'dashboard' }); }} 
+            onViewJournal={() => setView({ type: 'reflection', bookId: view.bookId })}
           />
         );
     }

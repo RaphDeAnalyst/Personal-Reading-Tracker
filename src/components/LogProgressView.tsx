@@ -1,16 +1,19 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Book } from '../types';
+import SuccessView from './SuccessView';
 
 interface LogProgressViewProps {
   bookId: number;
   onBack: () => void;
   onSaved: () => void;
+  onViewJournal?: (bookId: number) => void;
 }
 
-export default function LogProgressView({ bookId, onBack, onSaved }: LogProgressViewProps) {
+export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal }: LogProgressViewProps) {
   const [book, setBook] = useState<Book | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('');
   const [loading, setLoading] = useState(false);
+  const [showSuccess, setShowSuccess] = useState(false);
 
   useEffect(() => {
     fetch(`/api/books/${bookId}`)
@@ -18,19 +21,31 @@ export default function LogProgressView({ bookId, onBack, onSaved }: LogProgress
       .then(data => {
         setBook(data);
         setCurrentPage((data.current_page || 0).toString());
+        if (data.status === 'COMPLETED' || (data.current_page === data.total_pages && data.total_pages > 0)) {
+          setShowSuccess(true);
+        }
       });
   }, [bookId]);
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
+    const targetPage = parseInt(currentPage);
+    if (isNaN(targetPage)) return;
+
     setLoading(true);
     try {
       const res = await fetch(`/api/books/${bookId}/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ currentPage: parseInt(currentPage) })
+        body: JSON.stringify({ currentPage: targetPage })
       });
-      if (res.ok) onSaved();
+      if (res.ok) {
+        if (book && targetPage === book.total_pages) {
+          setShowSuccess(true);
+        } else {
+          onSaved();
+        }
+      }
     } catch (e) {
       console.error("Log error", e);
     } finally {
@@ -44,7 +59,16 @@ export default function LogProgressView({ bookId, onBack, onSaved }: LogProgress
     setCurrentPage(next.toString());
   };
 
-  if (!book) return <div className="text-center font-serif py-20 italic">Retrieving volume details...</div>;
+  if (!book) return (
+    <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
+      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      Consulting the archives...
+    </div>
+  );
+
+  if (showSuccess) {
+    return <SuccessView bookId={bookId} onFinish={onSaved} onViewJournal={() => onViewJournal?.(bookId)} />;
+  }
 
   return (
     <div className="w-full max-w-sm mx-auto py-8">

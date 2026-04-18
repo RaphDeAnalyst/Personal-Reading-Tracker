@@ -76,14 +76,14 @@ async function startServer() {
 
     // Migration: Reflections (learning/application/disagreement -> content/rating)
     const reflectionsInfo = db.prepare("PRAGMA table_info(reflections)").all() as any[];
-    if (reflectionsInfo.some(col => col.name === 'learning')) {
-      // Very simple migration: rename/drop and recreate or just add columns and we'll handle NULLs
-      // Since it's a personal tracker, we can just drop and recreate or carefully migrate.
-      // Better: check and add new columns, old ones stay but unused.
-      if (!reflectionsInfo.some(col => col.name === 'content')) {
-        db.exec("ALTER TABLE reflections ADD COLUMN content TEXT");
-        db.exec("ALTER TABLE reflections ADD COLUMN rating INTEGER DEFAULT 5");
-      }
+    if (!reflectionsInfo.some(col => col.name === 'learning')) {
+      db.exec("ALTER TABLE reflections ADD COLUMN learning TEXT");
+      db.exec("ALTER TABLE reflections ADD COLUMN application TEXT");
+      db.exec("ALTER TABLE reflections ADD COLUMN disagreement TEXT");
+    }
+    if (!reflectionsInfo.some(col => col.name === 'content')) {
+      db.exec("ALTER TABLE reflections ADD COLUMN content TEXT");
+      db.exec("ALTER TABLE reflections ADD COLUMN rating INTEGER DEFAULT 5");
     }
 
     // Migration: Logs (add current_page if missing)
@@ -264,15 +264,18 @@ async function startServer() {
   app.post("/api/books/:id/reflection", (req, res) => {
     try {
       const { id } = req.params;
-      const { content, rating } = req.body;
+      const { content, rating, learning, application, disagreement } = req.body;
       
       db.prepare(`
-        INSERT INTO reflections (book_id, content, rating)
-        VALUES (?, ?, ?)
+        INSERT INTO reflections (book_id, content, rating, learning, application, disagreement)
+        VALUES (?, ?, ?, ?, ?, ?)
         ON CONFLICT(book_id) DO UPDATE SET
           content=excluded.content,
-          rating=excluded.rating
-      `).run(id, content, rating);
+          rating=excluded.rating,
+          learning=excluded.learning,
+          application=excluded.application,
+          disagreement=excluded.disagreement
+      `).run(id, content, rating, learning, application, disagreement);
 
       res.json({ success: true });
     } catch (error) {
