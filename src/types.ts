@@ -12,6 +12,7 @@ export interface Book {
   cover_url?: string;
   created_at: string;
   has_reflection?: boolean;
+  is_full_reflection?: boolean;
 }
 
 export interface ReadingLog {

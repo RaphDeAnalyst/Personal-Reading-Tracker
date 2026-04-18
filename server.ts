@@ -118,6 +118,7 @@ async function startServer() {
     try {
       const books = db.prepare(`
         SELECT b.*, 
+        CASE WHEN r.id IS NOT NULL AND r.learning IS NOT NULL AND r.learning != '' AND r.application IS NOT NULL AND r.application != '' AND r.disagreement IS NOT NULL AND r.disagreement != '' THEN 1 ELSE 0 END as is_full_reflection,
         CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as has_reflection 
         FROM books b 
         LEFT JOIN reflections r ON b.id = r.book_id 

@@ -27,40 +27,40 @@ export default function ReflectionView({ bookId, onBack, onComplete }: Reflectio
       });
   }, [bookId]);
 
-  const handleSaveReflection = async (isCompleting: boolean) => {
+  const handleCompleteBook = async () => {
     setLoading(true);
     try {
-      // Combine for the general 'content' field if needed, but keeping separate columns is better.
-      const content = `Learning: ${learning}\nApplication: ${application}\nDisagreement: ${disagreement}`;
-      
-      const res = await fetch(`/api/books/${bookId}/reflection`, {
-        method: 'POST',
+      const hasAnyContent = 
+        learning.trim().length > 0 || 
+        application.trim().length > 0 || 
+        disagreement.trim().length > 0;
+
+      if (hasAnyContent) {
+        // Save what we have (could be full or partial)
+        const content = `Learning: ${learning}\nApplication: ${application}\nDisagreement: ${disagreement}`;
+        await fetch(`/api/books/${bookId}/reflection`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            content, 
+            rating: 5, 
+            learning, 
+            application, 
+            disagreement 
+          })
+        });
+      }
+
+      // Always mark as COMPLETED
+      await fetch(`/api/books/${bookId}`, {
+        method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          content, 
-          rating: 5, // Default rating 
-          learning, 
-          application, 
-          disagreement 
-        })
+        body: JSON.stringify({ status: 'COMPLETED' })
       });
       
-      if (res.ok) {
-        if (isCompleting) {
-          await fetch(`/api/books/${bookId}`, {
-            method: 'PATCH',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ status: 'COMPLETED' })
-          });
-          onComplete(bookId);
-        } else {
-          // Just saving - go back or show some feedback?
-          // The user's request says "added reflection should be shown" and "added and saved"
-          onBack(); 
-        }
-      }
+      onComplete(bookId);
     } catch (error) {
-      console.error("Reflection save error", error);
+      console.error("Completion error", error);
     } finally {
       setLoading(false);
     }
@@ -156,20 +156,13 @@ export default function ReflectionView({ bookId, onBack, onComplete }: Reflectio
       </div>
 
       {/* Meta Interaction */}
-      <section className="mt-8 flex flex-col gap-5">
+      <section className="mt-8">
         <button 
-          onClick={() => handleSaveReflection(true)}
+          onClick={handleCompleteBook}
           disabled={loading}
           className="w-full bg-primary text-on-primary h-14 rounded-md font-label text-[11px] tracking-[0.15em] uppercase font-bold transition-all duration-300 hover:bg-primary-dim active:scale-[0.98] shadow-lg shadow-primary/10 disabled:opacity-50"
         >
           {loading ? 'Processing...' : 'Complete Book'}
-        </button>
-        <button 
-          onClick={() => handleSaveReflection(false)}
-          disabled={loading}
-          className="w-full border border-outline-variant text-on-surface-variant h-14 rounded-md font-label text-[11px] tracking-[0.15em] uppercase font-bold transition-all duration-300 hover:bg-surface-container-low active:scale-[0.98] disabled:opacity-50"
-        >
-          Commit to Archive
         </button>
       </section>
     </main>

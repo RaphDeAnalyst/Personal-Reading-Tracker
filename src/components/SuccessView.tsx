@@ -22,6 +22,15 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
     </div>
   );
 
+  const isFullReflection = 
+    bookDetail.reflection &&
+    bookDetail.reflection.learning?.trim() &&
+    bookDetail.reflection.application?.trim() &&
+    bookDetail.reflection.disagreement?.trim();
+
+  const isPartialReflection = 
+    bookDetail.reflection && !isFullReflection;
+
   return (
     <main className="min-h-screen flex items-center justify-center px-6 py-12">
       {/* Success Container */}
@@ -42,9 +51,16 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
           <h1 className="text-4xl md:text-5xl font-headline font-medium tracking-tight text-on-surface">
             {bookDetail.status === 'COMPLETED' ? 'Volume Archived' : 'Book completed'}
           </h1>
-          <p className="text-on-surface-variant font-body text-lg leading-relaxed italic opacity-80">
-            {bookDetail.reflection?.content ? 'Reflection saved successfully' : 'Your journey has been recorded'}
-          </p>
+          <div className="flex flex-col gap-1">
+            <p className="text-on-surface-variant font-body text-lg leading-relaxed italic opacity-80">
+              Your journey has been recorded
+            </p>
+            <p className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-tertiary/60">
+              {isFullReflection ? 'Reflection saved successfully' : 
+               isPartialReflection ? 'Reflection draft saved' : 
+               'No reflection saved'}
+            </p>
+          </div>
         </div>
 
         {/* The Reading Card: Achievement Summary */}

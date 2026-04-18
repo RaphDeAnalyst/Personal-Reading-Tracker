@@ -20,8 +20,8 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
       });
   }, []);
 
-  const pendingBooks = books.filter(b => b.status === 'COMPLETED' && !b.has_reflection);
-  const reflectedBooks = books.filter(b => b.has_reflection);
+  const pendingBooks = books.filter(b => b.status === 'COMPLETED' && !b.is_full_reflection);
+  const reflectedBooks = books.filter(b => b.is_full_reflection);
   
   const displayBooks = activeTab === 'pending' ? pendingBooks : reflectedBooks;
 
