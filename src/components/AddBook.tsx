@@ -1,5 +1,5 @@
-import { useState, FormEvent } from 'react';
-import { ChevronLeft, Save } from 'lucide-react';
+import { useState, FormEvent, useRef, ChangeEvent } from 'react';
+import { ChevronLeft, Save, Upload } from 'lucide-react';
 import { ReadingMode } from '../types';
 
 interface AddBookProps {
@@ -9,6 +9,9 @@ interface AddBookProps {
 
 export default function AddBook({ onBack, onSave }: AddBookProps) {
   const [loading, setLoading] = useState(false);
+  const [cover, setCover] = useState<File | null>(null);
+  const [coverPreview, setCoverPreview] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -16,21 +19,36 @@ export default function AddBook({ onBack, onSave }: AddBookProps) {
     mode: 'PHYSICAL' as ReadingMode
   });
 
+  const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setCover(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setCoverPreview(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     if (!formData.title || !formData.totalPages) return;
     
     setLoading(true);
     try {
+      const data = new FormData();
+      data.append('title', formData.title);
+      data.append('author', formData.author);
+      data.append('total_pages', formData.totalPages);
+      data.append('mode', formData.mode);
+      if (cover) {
+        data.append('cover', cover);
+      }
+
       await fetch('/api/books', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          title: formData.title,
-          author: formData.author,
-          total_pages: parseInt(formData.totalPages),
-          mode: formData.mode
-        })
+        body: data
       });
       onSave();
     } catch (e) {
@@ -65,41 +83,69 @@ export default function AddBook({ onBack, onSave }: AddBookProps) {
             />
           </div>
 
-          <div className="space-y-3">
-            <label className="label-caps">Author</label>
-            <input 
-              type="text"
-              value={formData.author}
-              onChange={e => setFormData({...formData, author: e.target.value})}
-              className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all placeholder:text-ink/20"
-              placeholder="e.g. Marcus Aurelius"
-            />
-          </div>
-
-          <div className="grid grid-cols-2 gap-10 pt-4">
+          <div className="grid grid-cols-1 md:grid-cols-[200px_1fr] gap-10">
             <div className="space-y-3">
-              <label className="label-caps">Total Pages *</label>
-              <input 
-                required
-                type="number"
-                min="1"
-                value={formData.totalPages}
-                onChange={e => setFormData({...formData, totalPages: e.target.value})}
-                className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all"
-                placeholder="0"
-              />
-            </div>
-            
-            <div className="space-y-3">
-              <label className="label-caps">Reading Mode</label>
-              <select 
-                value={formData.mode}
-                onChange={e => setFormData({...formData, mode: e.target.value as ReadingMode})}
-                className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all appearance-none cursor-pointer"
+              <label className="label-caps">Cover Image</label>
+              <div 
+                onClick={() => fileInputRef.current?.click()}
+                className="aspect-[3/4] border-2 border-dashed border-line/20 rounded-lg flex flex-col items-center justify-center cursor-pointer hover:border-accent hover:bg-ink/5 transition-all overflow-hidden relative group"
               >
-                <option value="PHYSICAL">Physical</option>
-                <option value="PDF">PDF / Digital</option>
-              </select>
+                {coverPreview ? (
+                  <img src={coverPreview} alt="Preview" className="w-full h-full object-cover" />
+                ) : (
+                  <>
+                    <Upload className="w-6 h-6 text-muted mb-2 group-hover:text-accent" />
+                    <span className="text-[10px] font-bold uppercase tracking-widest text-muted group-hover:text-accent">Upload</span>
+                  </>
+                )}
+                <input 
+                  type="file" 
+                  ref={fileInputRef} 
+                  onChange={handleFileChange} 
+                  accept="image/*" 
+                  className="hidden" 
+                />
+              </div>
+            </div>
+
+            <div className="space-y-10">
+              <div className="space-y-3">
+                <label className="label-caps">Author</label>
+                <input 
+                  type="text"
+                  value={formData.author}
+                  onChange={e => setFormData({...formData, author: e.target.value})}
+                  className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all placeholder:text-ink/20"
+                  placeholder="e.g. Marcus Aurelius"
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-10">
+                <div className="space-y-3">
+                  <label className="label-caps">Total Pages *</label>
+                  <input 
+                    required
+                    type="number"
+                    min="1"
+                    value={formData.totalPages}
+                    onChange={e => setFormData({...formData, totalPages: e.target.value})}
+                    className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all"
+                    placeholder="0"
+                  />
+                </div>
+                
+                <div className="space-y-3">
+                  <label className="label-caps">Reading Mode</label>
+                  <select 
+                    value={formData.mode}
+                    onChange={e => setFormData({...formData, mode: e.target.value as ReadingMode})}
+                    className="w-full text-xl py-2 bg-transparent border-b border-line/20 focus:border-ink outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="PHYSICAL">Physical</option>
+                    <option value="PDF">PDF / Digital</option>
+                  </select>
+                </div>
+              </div>
             </div>
           </div>
 

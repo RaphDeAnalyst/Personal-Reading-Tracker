@@ -24,7 +24,19 @@ export default function App() {
 
   const checkStatus = async () => {
     try {
+      // Sanity check
+      const healthRes = await fetch('/api/health');
+      if (!healthRes.ok) {
+        console.warn("Health check failed", healthRes.status);
+      } else {
+        const health = await healthRes.json();
+        console.log("Server health:", health.status);
+      }
+
       const res = await fetch('/api/dashboard/status');
+      if (!res.ok) {
+        throw new Error(`HTTP error! status: ${res.status}`);
+      }
       const data = await res.json();
       setLoggedToday(data.loggedToday);
     } catch (e) {

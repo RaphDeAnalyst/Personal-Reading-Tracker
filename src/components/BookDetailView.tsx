@@ -91,45 +91,55 @@ export default function BookDetailView({ bookId, onBack, onReflect, onUpdate }: 
       <div className="grid grid-cols-1 lg:grid-cols-[1fr_340px] gap-20">
         {/* Main Info */}
         <div className="space-y-16 border-r border-ink/10 pr-10">
+          <div className="flex flex-col md:flex-row gap-12">
+            <div className="flex-1 space-y-10">
+              <div className="space-y-4">
+                <div className="flex items-center gap-3">
+                  <span className={clsx(
+                    "text-[10px] font-bold px-2 py-0.5 border border-ink rounded-full uppercase tracking-wider",
+                    book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
+                  )}>
+                    {book.status.replace('_', ' ')}
+                  </span>
+                  <span className="text-[10px] font-bold border border-ink/20 text-muted px-2 py-0.5 rounded-full uppercase tracking-wider">
+                    {book.mode}
+                  </span>
+                </div>
+                <h2 className="bold-title">{book.title}</h2>
+                <p className="text-xl text-muted font-serif italic tracking-tight">{book.author || 'Unknown Author'}</p>
+              </div>
+
+              <div className="space-y-10">
+                <div className="flex items-end gap-10">
+                  <div className="massive-stat text-[140px] leading-[0.8]">
+                    {progress}%
+                  </div>
+                  <div className="pb-4">
+                    <p className="text-xl font-bold uppercase tracking-widest leading-none mb-2">{book.current_page} of {book.total_pages} pages</p>
+                    <p className="text-sm font-bold uppercase tracking-widest text-accent">{pagesRemaining} pages remaining</p>
+                  </div>
+                </div>
+                
+                <div className="h-2 w-full bg-ink/5 relative">
+                  <div 
+                    className={clsx(
+                      "absolute h-full transition-all duration-1000 ease-out",
+                      book.status === 'COMPLETED' ? "bg-emerald-500" : "bg-accent"
+                    )}
+                    style={{ width: `${progress}%` }}
+                  />
+                </div>
+              </div>
+            </div>
+
+            {book.cover_url && (
+              <div className="w-full md:w-[240px] aspect-[3/4] flex-shrink-0 bg-ink/5 border border-ink/10 shadow-xl rounded-sm overflow-hidden">
+                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+              </div>
+            )}
+          </div>
+
           <div className="space-y-10">
-            <div className="space-y-4">
-              <div className="flex items-center gap-3">
-                <span className={clsx(
-                  "text-[10px] font-bold px-2 py-0.5 border border-ink rounded-full uppercase tracking-wider",
-                  book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
-                )}>
-                  {book.status.replace('_', ' ')}
-                </span>
-                <span className="text-[10px] font-bold border border-ink/20 text-muted px-2 py-0.5 rounded-full uppercase tracking-wider">
-                  {book.mode}
-                </span>
-              </div>
-              <h2 className="bold-title">{book.title}</h2>
-              <p className="text-xl text-muted font-serif italic tracking-tight">{book.author || 'Unknown Author'}</p>
-            </div>
-
-            <div className="space-y-10">
-              <div className="flex items-end gap-10">
-                <div className="massive-stat text-[140px] leading-[0.8]">
-                  {progress}%
-                </div>
-                <div className="pb-4">
-                  <p className="text-xl font-bold uppercase tracking-widest leading-none mb-2">{book.current_page} of {book.total_pages} pages</p>
-                  <p className="text-sm font-bold uppercase tracking-widest text-accent">{pagesRemaining} pages remaining</p>
-                </div>
-              </div>
-              
-              <div className="h-2 w-full bg-ink/5 relative">
-                <div 
-                  className={clsx(
-                    "absolute h-full transition-all duration-1000 ease-out",
-                    book.status === 'COMPLETED' ? "bg-emerald-500" : "bg-accent"
-                  )}
-                  style={{ width: `${progress}%` }}
-                />
-              </div>
-            </div>
-
             <div className="flex gap-4">
               {book.status !== 'COMPLETED' ? (
                 <div className="flex-1 flex gap-4 p-8 bg-ink/5 items-center">

@@ -9,6 +9,7 @@ export interface Book {
   current_page: number;
   status: BookStatus;
   mode: ReadingMode;
+  cover_url?: string;
   created_at: string;
 }
 

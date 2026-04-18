@@ -49,45 +49,61 @@ export default function Dashboard({ onSelectBook, onAddBook }: DashboardProps) {
       {/* Left Column: Hero Section */}
       <section className="flex flex-col justify-between border-r border-ink/10 pr-20 min-h-[600px]">
         {currentlyReading ? (
-          <div>
-            <span className="label-caps mb-8 block">Currently Reading</span>
-            <h2 className="bold-title mb-10 group cursor-pointer" onClick={() => onSelectBook(currentlyReading.id)}>
-              {currentlyReading.title}
-            </h2>
-            
-            <div className="flex items-center gap-10">
-              <div className="massive-stat text-[120px]">
-                {Math.round((currentlyReading.current_page / currentlyReading.total_pages) * 100)}%
+          <div className="flex flex-col md:flex-row gap-12">
+            <div className="flex-1">
+              <span className="label-caps mb-8 block">Currently Reading</span>
+              <h2 className="bold-title mb-10 group cursor-pointer" onClick={() => onSelectBook(currentlyReading.id)}>
+                {currentlyReading.title}
+              </h2>
+              
+              <div className="flex items-center gap-10">
+                <div className="massive-stat text-[120px]">
+                  {Math.round((currentlyReading.current_page / currentlyReading.total_pages) * 100)}%
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold uppercase tracking-widest">{currentlyReading.current_page} of {currentlyReading.total_pages} pages</p>
+                  <p className="text-sm font-bold uppercase tracking-widest text-accent">{currentlyReading.total_pages - currentlyReading.current_page} pages left</p>
+                  <p className="text-muted italic">{currentlyReading.author}</p>
+                </div>
               </div>
-              <div className="space-y-1">
-                <p className="text-sm font-bold uppercase tracking-widest">{currentlyReading.current_page} of {currentlyReading.total_pages} pages</p>
-                <p className="text-sm font-bold uppercase tracking-widest text-accent">{currentlyReading.total_pages - currentlyReading.current_page} pages left</p>
-                <p className="text-muted italic">{currentlyReading.author}</p>
+
+              <div className="w-full h-2 bg-ink/5 mt-10 relative">
+                <div 
+                  className="absolute h-full bg-accent transition-all duration-1000"
+                  style={{ width: `${(currentlyReading.current_page / currentlyReading.total_pages) * 100}%` }}
+                />
+              </div>
+
+              <div className="mt-20">
+                <span className="label-caps mb-6 block">Historical View</span>
+                <div className="flex items-end gap-3 h-32">
+                  {[30, 50, 20, 80, 45, 60, 10].map((h, i) => (
+                    <div 
+                      key={i} 
+                      className={clsx(
+                        "flex-1 transition-all duration-500",
+                        i === 3 ? "bg-accent" : "bg-ink"
+                      )}
+                      style={{ height: `${h}%` }}
+                    />
+                  ))}
+                </div>
               </div>
             </div>
 
-            <div className="w-full h-2 bg-ink/5 mt-10 relative">
+            {currentlyReading.cover_url && (
               <div 
-                className="absolute h-full bg-accent transition-all duration-1000"
-                style={{ width: `${(currentlyReading.current_page / currentlyReading.total_pages) * 100}%` }}
-              />
-            </div>
-
-            <div className="mt-20">
-              <span className="label-caps mb-6 block">Historical View</span>
-              <div className="flex items-end gap-3 h-32">
-                {[30, 50, 20, 80, 45, 60, 10].map((h, i) => (
-                  <div 
-                    key={i} 
-                    className={clsx(
-                      "flex-1 transition-all duration-500",
-                      i === 3 ? "bg-accent" : "bg-ink"
-                    )}
-                    style={{ height: `${h}%` }}
-                  />
-                ))}
+                onClick={() => onSelectBook(currentlyReading.id)}
+                className="w-full md:w-[280px] aspect-[3/4] bg-ink/5 shadow-2xl rotate-2 hover:rotate-0 transition-all duration-500 cursor-pointer overflow-hidden rounded-sm border border-ink/10"
+              >
+                <img 
+                  src={currentlyReading.cover_url} 
+                  alt={currentlyReading.title} 
+                  className="w-full h-full object-cover"
+                  referrerPolicy="no-referrer"
+                />
               </div>
-            </div>
+            )}
           </div>
         ) : (
           <div className="py-20 text-muted italic">Initialize a project to view the command center.</div>
@@ -103,18 +119,31 @@ export default function Dashboard({ onSelectBook, onAddBook }: DashboardProps) {
               <li 
                 key={book.id} 
                 onClick={() => onSelectBook(book.id)}
-                className="group flex justify-between items-center py-4 border-b border-ink/10 cursor-pointer hover:border-ink transition-all"
+                className="group flex gap-4 py-4 border-b border-ink/10 cursor-pointer hover:border-ink transition-all"
               >
-                <div className="book-info">
-                  <h4 className="font-bold text-base leading-tight group-hover:text-accent transition-colors">{book.title}</h4>
-                  <p className="text-xs text-muted font-medium">{book.author}</p>
+                {book.cover_url ? (
+                  <div className="w-12 h-16 flex-shrink-0 overflow-hidden bg-ink/5 border border-ink/5 rounded-sm">
+                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" />
+                  </div>
+                ) : (
+                  <div className="w-12 h-16 flex-shrink-0 bg-ink/5 border border-ink/5 flex items-center justify-center rounded-sm">
+                    <BookOpen className="w-4 h-4 text-muted" />
+                  </div>
+                )}
+                <div className="flex-1 min-w-0">
+                  <div className="flex justify-between items-start">
+                    <div className="book-info truncate">
+                      <h4 className="font-bold text-base leading-tight group-hover:text-accent transition-colors truncate">{book.title}</h4>
+                      <p className="text-xs text-muted font-medium truncate">{book.author}</p>
+                    </div>
+                    <span className={clsx(
+                      "text-[9px] px-2 py-0.5 border border-ink rounded-full uppercase font-bold tracking-widest flex-shrink-0 ml-2",
+                      book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
+                    )}>
+                      {book.status.replace('_', ' ')}
+                    </span>
+                  </div>
                 </div>
-                <span className={clsx(
-                  "text-[9px] px-2 py-0.5 border border-ink rounded-full uppercase font-bold tracking-widest",
-                  book.status === 'COMPLETED' ? "bg-ink text-bg" : "text-ink"
-                )}>
-                  {book.status.replace('_', ' ')}
-                </span>
               </li>
             ))}
           </ul>
