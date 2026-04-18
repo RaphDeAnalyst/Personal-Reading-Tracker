@@ -1,5 +1,5 @@
 export type BookStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
-export type ReadingMode = 'PHYSICAL' | 'PDF';
+export type ReadingMode = 'PHYSICAL' | 'DIGITAL';
 
 export interface Book {
   id: number;
@@ -10,6 +10,7 @@ export interface Book {
   status: BookStatus;
   mode: ReadingMode;
   cover_url?: string;
+  pdf_file_path?: string;
   created_at: string;
   has_reflection?: boolean;
   is_full_reflection?: boolean;

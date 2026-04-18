@@ -53,6 +53,7 @@ async function startServer() {
         status TEXT DEFAULT 'NOT_STARTED',
         mode TEXT DEFAULT 'PHYSICAL',
         cover_url TEXT,
+        pdf_file_path TEXT,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -79,6 +80,9 @@ async function startServer() {
     const booksInfo = db.prepare("PRAGMA table_info(books)").all() as any[];
     if (!booksInfo.some(col => col.name === 'cover_url')) {
       db.exec("ALTER TABLE books ADD COLUMN cover_url TEXT");
+    }
+    if (!booksInfo.some(col => col.name === 'pdf_file_path')) {
+      db.exec("ALTER TABLE books ADD COLUMN pdf_file_path TEXT");
     }
 
     // Migration: Reflections (learning/application/disagreement -> content/rating)
@@ -139,14 +143,17 @@ async function startServer() {
   });
 
   // Add new book
-  app.post("/api/books", upload.single("cover"), (req, res) => {
+  app.post("/api/books", upload.fields([{ name: "cover", maxCount: 1 }, { name: "pdf", maxCount: 1 }]), (req, res) => {
     try {
       const { title, author, total_pages, mode, cover_url: body_cover_url } = req.body;
-      const cover_url = req.file ? `/uploads/${req.file.filename}` : (body_cover_url || null);
+      const files = req.files as { [fieldname: string]: Express.Multer.File[] };
+      
+      const cover_url = files?.cover?.[0] ? `/uploads/${files.cover[0].filename}` : (body_cover_url || null);
+      const pdf_file_path = files?.pdf?.[0] ? `/uploads/${files.pdf[0].filename}` : null;
 
       const info = db.prepare(
-        "INSERT INTO books (title, author, total_pages, mode, cover_url) VALUES (?, ?, ?, ?, ?)"
-      ).run(title, author || "", total_pages, mode || "PHYSICAL", cover_url);
+        "INSERT INTO books (title, author, total_pages, mode, cover_url, pdf_file_path) VALUES (?, ?, ?, ?, ?, ?)"
+      ).run(title, author || "", total_pages, mode || "PHYSICAL", cover_url, pdf_file_path);
       
       const newBook = db.prepare("SELECT * FROM books WHERE id = ?").get(info.lastInsertRowid);
       res.json(newBook);

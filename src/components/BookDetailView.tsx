@@ -6,10 +6,11 @@ interface BookDetailViewProps {
   onBack: () => void;
   onLogProgress: (bookId: number) => void;
   onWriteReflection: (bookId: number) => void;
+  onOpenReader: (bookId: number) => void;
   onDelete: () => void;
 }
 
-export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onDelete }: BookDetailViewProps) {
+export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onOpenReader, onDelete }: BookDetailViewProps) {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [quickLogValue, setQuickLogValue] = useState<string>('');
   const [logging, setLogging] = useState(false);
@@ -221,6 +222,15 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
           {/* Primary Action Cluster */}
           <div className="flex flex-col gap-4 py-4">
+            {bookDetail.mode === 'DIGITAL' && (
+              <button 
+                onClick={() => onOpenReader(bookId)}
+                className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-primary text-on-primary rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
+              >
+                <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform" style={{ fontVariationSettings: "'FILL' 1" }}>menu_book</span>
+                Open PDF Reader
+              </button>
+            )}
             {bookDetail.status !== 'COMPLETED' && (
               <button 
                 onClick={handleMarkAsCompleted}

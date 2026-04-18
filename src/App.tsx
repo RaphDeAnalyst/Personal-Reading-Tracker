@@ -12,6 +12,7 @@ import ReflectionView from './components/ReflectionView';
 import LogProgressView from './components/LogProgressView';
 import SuccessView from './components/SuccessView';
 import ReflectionIndexView from './components/ReflectionIndexView';
+import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import { Book } from './types';
 
@@ -22,6 +23,7 @@ type View =
   | { type: 'reflection'; bookId: number }
   | { type: 'reflection-index' }
   | { type: 'log-progress'; bookId: number }
+  | { type: 'reader'; bookId: number }
   | { type: 'success'; bookId: number };
 
 export default function App() {
@@ -80,6 +82,7 @@ export default function App() {
             onBack={() => setView({ type: 'dashboard' })} 
             onLogProgress={(id) => setView({ type: 'log-progress', bookId: id })}
             onWriteReflection={(id) => setView({ type: 'reflection', bookId: id })}
+            onOpenReader={(id) => setView({ type: 'reader', bookId: id })}
             onDelete={() => { fetchBooks(); setView({ type: 'dashboard' }); }}
           />
         );
@@ -106,6 +109,14 @@ export default function App() {
             onViewJournal={(id) => setView({ type: 'reflection', bookId: id })}
           />
         );
+      case 'reader':
+        return (
+          <PDFReader 
+            bookId={view.bookId} 
+            onBack={() => setView({ type: 'detail', bookId: view.bookId })}
+            onFinish={() => setView({ type: 'success', bookId: view.bookId })}
+          />
+        );
       case 'success':
         return (
           <SuccessView 
@@ -117,17 +128,21 @@ export default function App() {
     }
   };
 
+  const isReading = view.type === 'reader';
+
   return (
-    <div className="min-h-screen bg-background text-on-surface font-body selection:bg-primary-container">
-      <Sidebar 
-        isOpen={isSidebarOpen} 
-        onClose={() => setIsSidebarOpen(!isSidebarOpen)} 
-        onNavigate={(v) => {
-          setView(v);
-          setIsSidebarOpen(false);
-        }}
-        currentView={view.type}
-      />
+    <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container ${isReading ? 'overflow-hidden' : ''}`}>
+      {!isReading && (
+        <>
+          <Sidebar 
+            isOpen={isSidebarOpen} 
+            onClose={() => setIsSidebarOpen(!isSidebarOpen)} 
+            onNavigate={(v) => {
+              setView(v);
+              setIsSidebarOpen(false);
+            }}
+            currentView={view.type}
+          />
 
       {/* Top Alert Banner */}
       {showAlert && !loggedToday && (
@@ -190,12 +205,14 @@ export default function App() {
           />
         </div>
       </header>
+        </>
+      )}
 
       {/* Main Content Area */}
-      <main className={`transition-all duration-300 ${showAlert && !loggedToday ? 'pt-36' : 'pt-24'} pb-32 px-6 max-w-5xl mx-auto`}>
+      <main className={`transition-all duration-300 ${isReading ? 'p-0 pt-0 max-w-none' : (showAlert && !loggedToday ? 'pt-36' : 'pt-24')} pb-32 px-6 max-w-5xl mx-auto`}>
         <AnimatePresence mode="wait">
           <motion.div
-            key={view.type + (view.type === 'detail' || view.type === 'reflection' || view.type === 'log-progress' ? (view as any).bookId : '')}
+            key={view.type + (view.type === 'detail' || view.type === 'reflection' || view.type === 'log-progress' || view.type === 'reader' ? (view as any).bookId : '')}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
@@ -207,7 +224,8 @@ export default function App() {
       </main>
 
       {/* Responsive Navigation DOCK (Desktop: Visible | Mobile: Hidden) */}
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden md:flex items-center gap-2 p-2 bg-background/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(48,51,49,0.12)] border border-outline-variant/10 rounded-2xl">
+      {!isReading && (
+        <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden md:flex items-center gap-2 p-2 bg-background/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(48,51,49,0.12)] border border-outline-variant/10 rounded-2xl">
         <button 
           onClick={() => setView({ type: 'dashboard' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
@@ -239,6 +257,7 @@ export default function App() {
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
         </button>
       </nav>
+      )}
     </div>
   );
 }
