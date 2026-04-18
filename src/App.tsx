@@ -46,8 +46,8 @@ export default function App() {
       const res = await fetch('/api/books');
       if (res.ok) {
         const books: Book[] = await res.json();
-        const active = books.find(b => b.status === 'IN_PROGRESS') || books[0];
-        if (active) setCurrentFocusId(active.id);
+        const active = books.find(b => b.status === 'IN_PROGRESS');
+        setCurrentFocusId(active ? active.id : null);
       }
     } catch (e) {
       console.error("Failed to fetch books", e);

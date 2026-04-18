@@ -14,6 +14,8 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   const [quickLogValue, setQuickLogValue] = useState<string>('');
   const [logging, setLogging] = useState(false);
 
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+
   const fetchData = async () => {
     try {
       const res = await fetch(`/api/books/${bookId}`);
@@ -53,13 +55,14 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   };
 
   const handleDelete = async () => {
-    if (confirm('Are you sure you want to remove this entry from your archive?')) {
-      try {
-        const res = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
-        if (res.ok) onDelete();
-      } catch (e) {
-        console.error("Delete error", e);
-      }
+    setLogging(true);
+    try {
+      const res = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
+      if (res.ok) onDelete();
+    } catch (e) {
+      console.error("Delete error", e);
+    } finally {
+      setLogging(false);
     }
   };
 
@@ -115,14 +118,37 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 “This document resides within your personal sanctuary. Every chapter archived is a step toward eternal wisdom.”
               </p>
             </div>
-            <div className="flex justify-start">
-              <button 
-                onClick={handleDelete}
-                className="flex items-center gap-2 text-outline-variant hover:text-error transition-colors text-[10px] font-bold uppercase tracking-widest pt-4"
-              >
-                <span className="material-symbols-outlined text-sm">delete</span>
-                Decommission Volume
-              </button>
+            <div className="flex flex-col gap-2 pt-4">
+              {!showDeleteConfirm ? (
+                <button 
+                  onClick={() => setShowDeleteConfirm(true)}
+                  className="flex items-center gap-2 text-outline-variant hover:text-error transition-colors text-[10px] font-bold uppercase tracking-widest"
+                >
+                  <span className="material-symbols-outlined text-sm">delete</span>
+                  Decommission Volume
+                </button>
+              ) : (
+                <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
+                  <p className="text-[10px] text-error font-bold uppercase tracking-[0.1em] border-l-2 border-error pl-3 py-1">
+                    This action is irreversible. <br/>Proceed with decommissioning?
+                  </p>
+                  <div className="flex gap-4">
+                    <button 
+                      onClick={handleDelete}
+                      disabled={logging}
+                      className="text-[10px] font-bold uppercase tracking-widest text-error hover:underline disabled:opacity-50"
+                    >
+                      {logging ? 'Archiving...' : 'Yes, Decommission'}
+                    </button>
+                    <button 
+                      onClick={() => setShowDeleteConfirm(false)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-outline-variant hover:text-on-surface transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )}
             </div>
           </div>
         </aside>

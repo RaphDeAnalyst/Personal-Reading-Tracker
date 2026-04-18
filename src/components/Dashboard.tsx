@@ -28,7 +28,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
         const booksData: Book[] = await booksRes.json();
         setBooks(booksData);
         
-        const active = booksData.find(b => b.status === 'IN_PROGRESS') || booksData.find(b => b.status === 'NOT_STARTED') || booksData[0];
+        const active = booksData.find(b => b.status === 'IN_PROGRESS');
         setCurrentBook(active || null);
 
         const statsRes = await fetch('/api/dashboard/status');
