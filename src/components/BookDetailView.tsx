@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, Log } from '../types';
+import { Book, Log, Reflection, BookDetail } from '../types';
 
 interface BookDetailViewProps {
   bookId: number;
@@ -10,32 +10,47 @@ interface BookDetailViewProps {
 }
 
 export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onDelete }: BookDetailViewProps) {
-  const [book, setBook] = useState<Book | null>(null);
-  const [logs, setLogs] = useState<Log[]>([]);
+  const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
+  const [quickLogValue, setQuickLogValue] = useState<string>('');
+  const [logging, setLogging] = useState(false);
+
+  const fetchData = async () => {
+    try {
+      const res = await fetch(`/api/books/${bookId}`);
+      if (!res.ok) throw new Error(`Fetch failed: ${res.status}`);
+      const data = await res.json();
+      setBookDetail(data);
+    } catch (e) {
+      console.error("Fetch detail error:", e);
+    }
+  };
 
   useEffect(() => {
-    const fetchBookDetails = async () => {
-      try {
-        const bookRes = await fetch(`/api/books/${bookId}`);
-        if (!bookRes.ok) throw new Error(`Book fetch failed with status: ${bookRes.status}`);
-        
-        const contentType = bookRes.headers.get("content-type");
-        if (!contentType || !contentType.includes("application/json")) {
-          const text = await bookRes.text();
-          console.error("Non-JSON response received:", text.substring(0, 100));
-          throw new Error("Expected JSON from API but received something else.");
-        }
-
-        const data = await bookRes.json();
-        setBook(data);
-        // data.logs should already be populated by the combined /api/books/:id endpoint
-        if (data.logs) setLogs(data.logs);
-      } catch (e) {
-        console.error("Fetch detail error:", e);
-      }
-    };
-    fetchBookDetails();
+    fetchData();
   }, [bookId]);
+
+  const handleQuickLog = async (pages?: number) => {
+    if (!bookDetail || logging) return;
+    const pagesRead = pages !== undefined ? pages : parseInt(quickLogValue);
+    if (!pagesRead || isNaN(pagesRead)) return;
+
+    setLogging(true);
+    try {
+      const res = await fetch(`/api/books/${bookId}/logs`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ pagesRead })
+      });
+      if (res.ok) {
+        setQuickLogValue('');
+        await fetchData();
+      }
+    } catch (e) {
+      console.error("Quick log error", e);
+    } finally {
+      setLogging(false);
+    }
+  };
 
   const handleDelete = async () => {
     if (confirm('Are you sure you want to remove this entry from your archive?')) {
@@ -48,136 +63,219 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     }
   };
 
-  if (!book) return <div className="text-center font-serif py-20 italic">Loading from archives...</div>;
+  const handleMarkAsCompleted = async () => {
+    try {
+      // Direct update to status if needed, but user wants to go to reflection page immediately
+      // The reflection page usually handles the completion logic or the user does it there.
+      // We can also patch the book first to ensure it's marked
+      await fetch(`/api/books/${bookId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COMPLETED', current_page: bookDetail?.total_pages })
+      });
+      onWriteReflection(bookId);
+    } catch (e) {
+      console.error("Mark as completed error", e);
+      onWriteReflection(bookId); // Fallback to navigation anyway
+    }
+  };
 
-  const progress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
+  if (!bookDetail) return <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
+    <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+    Consulting the archives...
+  </div>;
+
+  const progress = Math.round(((bookDetail.current_page || 0) / bookDetail.total_pages) * 100);
+  const pagesLeft = bookDetail.total_pages - (bookDetail.current_page || 0);
 
   return (
-    <div className="max-w-4xl mx-auto pb-20 px-4 md:px-0">
-      {/* Detail Header */}
-      <div className="flex items-center justify-between mb-16 px-4 md:px-0">
-        <button onClick={onBack} className="flex items-center gap-2 group text-on-surface-variant hover:text-on-surface transition-colors">
-          <span className="material-symbols-outlined text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
-          <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">Library</span>
-        </button>
-        <button onClick={handleDelete} className="text-outline-variant hover:text-error transition-all p-2 rounded-full hover:bg-error/5">
-          <span className="material-symbols-outlined text-xl">delete</span>
-        </button>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-16">
-        {/* Left: Identity Card */}
-        <div className="lg:col-span-5">
-          <div className="sticky top-28 space-y-12">
-            <div className="bg-surface-container-highest shadow-2xl rounded-2xl overflow-hidden aspect-[1/1.5] border border-outline-variant/10">
-              {book.cover_url ? (
-                <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+    <div className="max-w-4xl mx-auto pb-32">
+      <div className="flex flex-col md:flex-row gap-12 items-start">
+        {/* Book Cover & Meta */}
+        <aside className="w-full md:w-1/3 sticky top-24">
+          <div className="relative group">
+            <div className="absolute -inset-1 bg-primary/10 rounded-lg blur-xl opacity-25 group-hover:opacity-40 transition duration-1000"></div>
+            <div className="relative w-full rounded-lg shadow-2xl overflow-hidden aspect-[1/1.5] bg-surface-container">
+              {bookDetail.cover_url ? (
+                <img src={bookDetail.cover_url} alt={bookDetail.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                  <span className="material-symbols-outlined text-[120px]">menu_book</span>
+                  <span className="material-symbols-outlined text-[100px]">menu_book</span>
                 </div>
               )}
             </div>
-
-            <div className="space-y-6">
-              <div>
-                <span className="font-label text-[10px] uppercase font-bold tracking-[0.25em] text-on-surface-variant block mb-3">Currently Reviewing</span>
-                <h1 className="serif-text text-5xl text-on-surface leading-tight mb-2">{book.title}</h1>
-                <p className="font-label text-xl italic text-on-surface-variant">{book.author}</p>
-              </div>
-
-              <div className="pt-8 border-t border-outline-variant/10">
-                <div className="flex justify-between items-end mb-4">
-                  <span className="font-label text-[11px] text-on-surface-variant uppercase tracking-[0.15em] font-medium">Completion status</span>
-                  <span className="serif-text italic text-4xl text-primary">{progress}%</span>
-                </div>
-                <div className="h-2.5 w-full bg-surface-container-highest/60 rounded-full overflow-hidden">
-                  <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-1000" style={{ width: `${progress}%` }}></div>
-                </div>
-                <div className="flex justify-between mt-4">
-                  <p className="font-label text-[12px] text-on-surface-variant">{book.current_page || 0} of {book.total_pages} pages</p>
-                  <p className="font-label text-[12px] text-primary/70 font-medium">Started in {new Date(book.created_at || Date.now()).toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}</p>
-                </div>
-              </div>
-
-              <div className="flex flex-col gap-4 pt-8">
-                <button 
-                  onClick={() => onLogProgress(book.id)}
-                  className="w-full py-5 bg-primary text-on-primary rounded-xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-3"
-                >
-                  <span className="material-symbols-outlined text-[20px]">add</span>
-                  Record Progress
-                </button>
-                <button 
-                  onClick={() => onWriteReflection(book.id)}
-                  className="w-full py-5 border border-primary/20 bg-background text-primary rounded-xl font-label text-sm uppercase tracking-widest font-bold hover:bg-primary/5 transition-all active:scale-[0.97] flex items-center justify-center gap-3"
-                >
-                  <span className="material-symbols-outlined text-[20px]">edit_note</span>
-                  Add Reflection
-                </button>
-              </div>
+          </div>
+          <div className="mt-8 space-y-6">
+            <div className="flex flex-wrap gap-2">
+              <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{bookDetail.mode}</span>
+              <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{bookDetail.status.replace('_', ' ')}</span>
+            </div>
+            <div className="pt-2">
+              <p className="text-on-surface-variant text-sm leading-relaxed italic">
+                “This document resides within your personal sanctuary. Every chapter archived is a step toward eternal wisdom.”
+              </p>
+            </div>
+            <div className="flex justify-start">
+              <button 
+                onClick={handleDelete}
+                className="flex items-center gap-2 text-outline-variant hover:text-error transition-colors text-[10px] font-bold uppercase tracking-widest pt-4"
+              >
+                <span className="material-symbols-outlined text-sm">delete</span>
+                Decommission Volume
+              </button>
             </div>
           </div>
-        </div>
+        </aside>
 
-        {/* Right: Activity & Detail */}
-        <div className="lg:col-span-7 space-y-20">
-          <section>
-            <h2 className="serif-text text-3xl mb-12 flex items-center gap-4">
-              <span className="inline-block w-8 h-[1px] bg-primary/30"></span>
-              The Progress Archive
-            </h2>
+        {/* Book Content & Tracking */}
+        <section className="flex-1 space-y-10 w-full">
+          {/* Title & Header */}
+          <header className="space-y-2">
+            <h2 className="font-headline text-5xl md:text-6xl text-on-surface leading-tight font-semibold">{bookDetail.title}</h2>
+            <p className="text-xl text-on-surface-variant font-headline italic">by {bookDetail.author}</p>
+          </header>
 
-            <div className="space-y-12 relative before:absolute before:left-[19px] before:top-2 before:bottom-2 before:w-[1px] before:bg-outline-variant/10">
-              {logs.length > 0 ? logs.map((log, index) => (
-                <div key={log.id} className="relative pl-12 flex flex-col gap-2 group">
-                  {/* Timeline Node */}
-                  <div className="absolute left-0 top-1 w-10 h-10 flex items-center justify-center bg-background z-10 transition-transform group-hover:scale-110">
-                    <div className="w-2.5 h-2.5 rounded-full border-2 border-primary bg-background shadow-[0_0_8px_rgba(97,94,87,0.3)]"></div>
-                  </div>
+          {/* Progress Section */}
+          <div className="p-8 rounded-xl bg-surface-container-low border border-outline-variant/10 shadow-sm relative overflow-hidden">
+            <div className="flex justify-between items-end mb-6 relative z-10">
+              <div>
+                <span className="text-xs font-label text-on-surface-variant uppercase tracking-[0.2em] font-bold">Reading Progress</span>
+                <div className="mt-2 font-headline text-3xl font-semibold">
+                  Page {bookDetail.current_page || 0} <span className="text-outline-variant font-light px-1 text-xl">/</span> {bookDetail.total_pages}
+                </div>
+              </div>
+              <div className="text-right">
+                <span className="text-xl font-bold text-tertiary">{progress}%</span>
+                <p className="text-[10px] text-on-surface-variant uppercase tracking-widest font-bold mt-1">{pagesLeft} pages left</p>
+              </div>
+            </div>
+            
+            {/* Thick Prominent Progress Bar */}
+            <div className="h-4 w-full bg-surface-container-highest rounded-full overflow-hidden shadow-inner relative z-10 border border-outline-variant/5">
+              <div className="h-full bg-tertiary transition-all duration-700 ease-out flex items-center justify-end pr-2 overflow-hidden" style={{ width: `${progress}%` }}>
+                <div className="w-1 h-2 bg-white/20 rounded-full blur-[1px]"></div>
+              </div>
+            </div>
 
-                  <div className="flex flex-col gap-1">
-                    <div className="flex items-center gap-3">
-                      <span className="font-label text-[10px] uppercase font-bold tracking-[0.1em] text-on-surface-variant">
-                        {new Date(log.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
-                      </span>
-                      {index === 0 && <span className="bg-tertiary-fixed text-on-tertiary-fixed px-2 py-0.5 rounded-full text-[8px] font-bold uppercase tracking-widest">Recent</span>}
+            {/* Quick Log Section */}
+            {bookDetail.status !== 'COMPLETED' && (
+              <div className="mt-10 pt-8 border-t border-outline-variant/20 relative z-10">
+                <h4 className="text-xs font-bold text-on-surface mb-6 uppercase tracking-widest">Quick Log</h4>
+                <div className="space-y-6">
+                  {/* Main Input Row */}
+                  <div className="flex gap-3">
+                    <div className="relative flex-1">
+                      <input 
+                        type="number"
+                        value={quickLogValue}
+                        onChange={(e) => setQuickLogValue(e.target.value)}
+                        onKeyDown={(e) => e.key === 'Enter' && handleQuickLog()}
+                        className="w-full bg-white border border-outline-variant/30 rounded-md px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-on-surface font-medium placeholder:text-outline-variant/60 placeholder:text-sm"
+                        placeholder="Pages read today"
+                      />
                     </div>
-                    <p className="serif-text text-xl italic text-on-surface">“Learned {log.pages_read} more pages”</p>
-                    <p className="font-label text-[11px] text-on-surface-variant/70 italic mt-1">Found insights up to page {log.current_page}</p>
+                    <button 
+                      onClick={() => handleQuickLog()}
+                      disabled={logging || !quickLogValue}
+                      className="bg-primary text-on-primary px-8 py-3.5 rounded-md font-bold text-sm hover:bg-primary-dim transition-all active:scale-95 shadow-sm disabled:opacity-50"
+                    >
+                      {logging ? '...' : 'Log'}
+                    </button>
+                  </div>
+                  {/* Fast Tap Buttons */}
+                  <div className="flex gap-3">
+                    <button onClick={() => handleQuickLog(5)} className="flex-1 py-3.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-variant active:bg-outline-variant/40 transition-colors shadow-sm">+5</button>
+                    <button onClick={() => handleQuickLog(10)} className="flex-1 py-3.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-variant active:bg-outline-variant/40 transition-colors shadow-sm">+10</button>
+                    <button onClick={() => handleQuickLog(20)} className="flex-1 py-3.5 rounded-md bg-surface-container-high border border-outline-variant/20 text-on-surface font-semibold text-sm hover:bg-surface-variant active:bg-outline-variant/40 transition-colors shadow-sm">+20</button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Primary Action Cluster */}
+          <div className="flex flex-col gap-4 py-4">
+            {bookDetail.status !== 'COMPLETED' && (
+              <button 
+                onClick={handleMarkAsCompleted}
+                className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-on-surface text-surface rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
+              >
+                <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                Mark as Completed
+              </button>
+            )}
+            <button 
+              onClick={() => onLogProgress(bookId)}
+              className="w-full flex items-center justify-center gap-2 px-6 py-4 border border-outline-variant/30 text-primary rounded-md font-semibold hover:bg-surface-container-low transition-colors"
+            >
+              <span className="material-symbols-outlined text-[20px]">history_edu</span>
+              {bookDetail.status === 'COMPLETED' ? 'View Reading History' : 'Detailed Log'}
+            </button>
+          </div>
+
+          {/* Reading History (Timeline) */}
+          <div className="space-y-8 pt-6">
+            <div className="flex items-center justify-between">
+              <h3 className="font-headline text-2xl italic font-semibold">Reading History</h3>
+              <button onClick={() => onLogProgress(bookId)} className="text-primary text-sm font-bold hover:underline">View All</button>
+            </div>
+            
+            <div className="relative pl-8 space-y-12">
+              {/* Timeline Line */}
+              <div className="absolute left-[7px] top-2 bottom-2 w-[1px] bg-outline-variant/30"></div>
+              
+              {bookDetail.logs && bookDetail.logs.length > 0 ? bookDetail.logs.map((log, index) => (
+                <div key={log.id} className="relative">
+                  <div className={`absolute -left-[29px] top-1.5 w-[13px] h-[13px] rounded-full border-2 bg-surface ring-4 ring-surface ${index === 0 ? 'border-tertiary' : 'border-outline-variant'}`}></div>
+                  <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2">
+                    <div>
+                      <span className="text-xs font-bold text-on-surface uppercase tracking-widest block mb-1">
+                        {new Date(log.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {index === 0 && <span className="ml-2 text-tertiary normal-case italic font-headline">Recent</span>}
+                      </span>
+                      <p className="font-medium text-on-surface">“Gained insights up to page {log.current_page}”</p>
+                    </div>
+                    <span className="w-fit text-sm font-bold text-tertiary bg-tertiary-container/40 px-4 py-1.5 rounded-full border border-tertiary-dim/10">
+                      +{log.pages_read} pages read
+                    </span>
                   </div>
                 </div>
               )) : (
-                <div className="py-20 text-center text-outline-variant/50 serif-text text-xl italic pl-12 border-l border-outline-variant/5">
-                   No reading history found for this entry.
-                </div>
+                <div className="py-10 text-on-surface-variant italic font-headline opacity-60">No history discovered yet.</div>
               )}
             </div>
-          </section>
+          </div>
 
-          <section className="bg-surface-container-low/30 border border-outline-variant/10 rounded-2xl p-8 md:p-12 space-y-6">
-            <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">info</span>
-              <h3 className="font-label text-[11px] uppercase tracking-widest font-bold text-on-surface">Manifest Metadata</h3>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-y-10 gap-x-6">
-              <div>
-                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Subject Category</span>
-                <p className="serif-text text-lg italic text-on-surface">Non-Fiction & Research</p>
-              </div>
-              <div>
-                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Physical Scope</span>
-                <p className="serif-text text-lg italic text-on-surface">{book.total_pages} pages</p>
-              </div>
-              <div className="md:col-span-2">
-                <span className="font-label text-[10px] uppercase tracking-[0.1em] text-on-surface-variant block mb-2">Repository Note</span>
-                <p className="font-body text-sm leading-relaxed text-on-surface-variant italic">
-                  This work is currently under active archiving. Every recorded progress is a step towards completing the collection's wisdom.
-                </p>
+          {/* Notes / Reflections */}
+          {bookDetail.reflection ? (
+            <div className="pt-12 pb-10">
+              <h3 className="font-headline text-2xl italic mb-6 font-semibold">Sacred Reflections</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="p-6 bg-surface-container-lowest rounded-lg shadow-sm border border-outline-variant/10 group hover:border-tertiary/20 transition-colors">
+                  <p className="text-sm text-on-surface leading-relaxed font-label italic line-clamp-4">"{bookDetail.reflection.content}"</p>
+                  <div className="mt-4 flex items-center justify-between">
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-outline-variant">Archived Reflection</span>
+                    <div className="flex gap-0.5">
+                      {[...Array(5)].map((_, i) => (
+                        <span key={i} className={`material-symbols-outlined text-[14px] ${i < (bookDetail.reflection?.rating || 0) ? 'text-primary' : 'text-outline-variant/30'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                      ))}
+                    </div>
+                  </div>
+                </div>
               </div>
             </div>
-          </section>
-        </div>
+          ) : (
+             <div className="pt-12 pb-10">
+                <h3 className="font-headline text-2xl italic mb-6 font-semibold opacity-30">Sacred Reflections</h3>
+                <button 
+                  onClick={() => onWriteReflection(bookId)}
+                  className="w-full py-8 border-2 border-dashed border-outline-variant/20 rounded-xl text-on-surface-variant/50 hover:text-primary hover:border-primary/20 transition-all font-headline italic text-lg"
+                >
+                  Your reflections wait to be recorded...
+                </button>
+             </div>
+          )}
+        </section>
       </div>
     </div>
   );

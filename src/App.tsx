@@ -131,7 +131,21 @@ export default function App() {
       {/* Top Header */}
       <header className="fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background/95 backdrop-blur-sm border-b border-outline-variant/5">
         <div className="flex items-center gap-4">
-          <span className="material-symbols-outlined text-primary text-2xl cursor-pointer">menu</span>
+          {view.type !== 'dashboard' ? (
+            <button 
+              onClick={() => {
+                if (view.type === 'detail') setView({ type: 'dashboard' });
+                else if (view.type === 'reflection') setView({ type: 'detail', bookId: view.bookId });
+                else if (view.type === 'log-progress') setView({ type: 'detail', bookId: view.bookId });
+                else setView({ type: 'dashboard' });
+              }}
+              className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
+            >
+              <span className="material-symbols-outlined text-2xl">arrow_back</span>
+            </button>
+          ) : (
+            <span className="material-symbols-outlined text-primary text-2xl cursor-pointer">menu</span>
+          )}
         </div>
         <h1 
           onClick={() => setView({ type: 'dashboard' })}

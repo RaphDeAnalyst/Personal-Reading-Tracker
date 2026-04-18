@@ -148,7 +148,7 @@ async function startServer() {
       const book = db.prepare("SELECT * FROM books WHERE id = ?").get(req.params.id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
       
-      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY date DESC").all(req.params.id);
+      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY id DESC").all(req.params.id);
       const reflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(req.params.id);
       
       res.json({ ...book, logs, reflection });
@@ -161,7 +161,7 @@ async function startServer() {
   // Get logs for a book
   app.get("/api/books/:id/logs", (req, res) => {
     try {
-      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY date DESC").all(req.params.id);
+      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY id DESC").all(req.params.id);
       res.json(logs);
     } catch (error) {
       console.error("Error fetching logs:", error);

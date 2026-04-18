@@ -38,77 +38,116 @@ export default function LogProgressView({ bookId, onBack, onSaved }: LogProgress
     }
   };
 
+  const adjustPage = (amount: number) => {
+    if (!book) return;
+    const next = Math.min(parseInt(currentPage || '0') + amount, book.total_pages);
+    setCurrentPage(next.toString());
+  };
+
   if (!book) return <div className="text-center font-serif py-20 italic">Retrieving volume details...</div>;
 
   return (
-    <div className="max-w-xl mx-auto py-12 px-4 md:px-0">
-      <div className="mb-16">
-        <button onClick={onBack} className="flex items-center gap-2 group text-on-surface-variant hover:text-on-surface transition-colors mb-8">
-          <span className="material-symbols-outlined text-xl transition-transform group-hover:-translate-x-1">arrow_back</span>
-          <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">Volume Details</span>
-        </button>
-        <h2 className="serif-text text-5xl text-on-surface mb-2 leading-tight">Sync Progress</h2>
-        <p className="font-label text-sm text-on-surface-variant italic">Record your current location within the archives.</p>
+    <div className="w-full max-w-sm mx-auto py-8">
+      {/* Book Context */}
+      <div className="flex flex-col items-center mb-10 text-center">
+        <div className="w-24 h-32 mb-6 rounded shadow-xl bg-surface-container overflow-hidden border border-outline-variant/10">
+          {book.cover_url ? (
+            <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+          ) : (
+            <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+              <span className="material-symbols-outlined text-4xl">menu_book</span>
+            </div>
+          )}
+        </div>
+        <h2 className="serif-text text-xl font-medium text-on-surface">{book.title}</h2>
+        <p className="font-label text-xs text-on-surface-variant/70 uppercase tracking-widest mt-1">Currently at page {book.current_page || 0}</p>
       </div>
 
-      <div className="bg-surface-container-highest/40 border border-outline-variant/10 rounded-2xl p-8 mb-12 flex gap-8 items-center">
-        <div className="w-16 h-24 bg-surface-container-low overflow-hidden rounded shadow-sm flex-shrink-0">
-           {book.cover_url ? (
-              <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                <span className="material-symbols-outlined text-2xl">menu_book</span>
+      {/* Frictionless Input Area */}
+      <div className="bg-surface-container-lowest p-8 md:p-10 rounded-2xl shadow-[0_20px_50px_rgba(48,51,49,0.06)] border border-surface-container/50">
+        <form onSubmit={handleSave} className="space-y-10">
+          <div className="text-center">
+            <label className="block text-[10px] uppercase tracking-[0.3em] font-bold text-on-surface-variant/60 mb-8">Enter Current Page</label>
+            <div className="flex flex-col items-center gap-6">
+              <div className="relative inline-flex items-center justify-center">
+                <input 
+                  autoFocus
+                  type="number"
+                  inputMode="numeric"
+                  pattern="\d*"
+                  required
+                  min={0}
+                  max={book.total_pages}
+                  className="bg-transparent border-none p-0 focus:ring-0 serif-text text-7xl font-medium text-center placeholder:text-surface-container-highest w-40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  placeholder={(book.current_page || 0).toString()}
+                  value={currentPage}
+                  onChange={e => setCurrentPage(e.target.value)}
+                />
+                
+                <div className="flex flex-col gap-1 ml-2">
+                  <button 
+                    type="button" 
+                    onClick={() => adjustPage(1)}
+                    className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
+                  >
+                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_drop_up</span>
+                  </button>
+                  <button 
+                    type="button" 
+                    onClick={() => adjustPage(-1)}
+                    className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
+                  >
+                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_drop_down</span>
+                  </button>
+                </div>
+                
+                <span className="text-on-surface-variant/30 text-xl serif-text italic absolute bottom-4 -right-16 select-none">/ {book.total_pages}</span>
               </div>
-            )}
-        </div>
-        <div className="min-w-0">
-          <h3 className="serif-text text-xl text-on-surface leading-tight truncate">{book.title}</h3>
-          <p className="font-label text-[11px] text-on-surface-variant mt-1">Currently on page {book.current_page || 0} of {book.total_pages}</p>
-        </div>
-      </div>
-
-      <form onSubmit={handleSave} className="space-y-16">
-        <div className="relative group">
-          <span className="font-label text-[11px] font-bold uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Current Page Marker</span>
-          <div className="flex items-center gap-6">
-            <input 
-              type="number" 
-              required
-              min={book.current_page || 0}
-              max={book.total_pages}
-              className="w-full form-input-line serif-text text-6xl text-center italic placeholder:text-outline-variant/20"
-              placeholder="000"
-              value={currentPage}
-              onChange={e => setCurrentPage(e.target.value)}
-            />
+              
+              <div className="flex gap-3 mt-4">
+                <button 
+                  type="button"
+                  onClick={() => adjustPage(5)}
+                  className="px-4 py-2 rounded-full border border-outline-variant text-[11px] font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors tracking-widest btn-active-scale"
+                >
+                  +5
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => adjustPage(10)}
+                  className="px-4 py-2 rounded-full border border-outline-variant text-[11px] font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors tracking-widest btn-active-scale"
+                >
+                  +10
+                </button>
+                <button 
+                  type="button"
+                  onClick={() => adjustPage(20)}
+                  className="px-4 py-2 rounded-full border border-outline-variant text-[11px] font-bold text-on-surface-variant hover:bg-surface-container-high transition-colors tracking-widest btn-active-scale"
+                >
+                  +20
+                </button>
+              </div>
+            </div>
           </div>
-          <div className="flex justify-center mt-4">
-             <span className="font-label text-[10px] text-outline-variant uppercase tracking-widest italic">Target Page: {book.total_pages}</span>
-          </div>
-        </div>
 
-        <div className="flex flex-col items-center gap-6 pt-4">
           <button 
             type="submit"
             disabled={loading}
-            className="w-full py-5 bg-primary text-on-primary rounded-xl font-label text-sm uppercase tracking-[0.2em] font-bold hover:bg-primary-dim transition-all shadow-xl active:scale-[0.97] flex items-center justify-center gap-4 group"
+            className="w-full bg-primary hover:bg-primary-dim text-on-primary py-6 rounded-xl text-xs font-semibold uppercase tracking-[0.3em] transition-all duration-300 shadow-xl shadow-primary/20 btn-active-scale disabled:opacity-50"
           >
-            {loading ? 'Recording...' : (
-              <>
-                <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-y-[-2px]">history_edu</span>
-                Store Progress
-              </>
-            )}
+            {loading ? 'Archiving...' : 'Log Progress'}
           </button>
-          <button 
-            type="button"
-            onClick={onBack}
-            className="font-label text-xs uppercase tracking-widest font-bold text-on-surface-variant hover:text-on-surface transition-colors"
-          >
-            Cancel
-          </button>
-        </div>
-      </form>
+        </form>
+      </div>
+
+      <div className="mt-8 flex justify-center">
+        <button 
+          onClick={onBack}
+          className="text-on-surface-variant/40 hover:text-on-surface font-label text-[10px] uppercase tracking-[0.2em] font-bold transition-colors underline-offset-4 hover:underline"
+        >
+          Cancel & Return
+        </button>
+      </div>
     </div>
   );
 }
