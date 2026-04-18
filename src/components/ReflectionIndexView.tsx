@@ -10,6 +10,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
   const [books, setBooks] = useState<Book[]>([]);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'pending' | 'completed'>('pending');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     fetch('/api/books')
@@ -23,7 +24,10 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
   const pendingBooks = books.filter(b => b.status === 'COMPLETED' && !b.is_full_reflection);
   const reflectedBooks = books.filter(b => b.is_full_reflection);
   
-  const displayBooks = activeTab === 'pending' ? pendingBooks : reflectedBooks;
+  const displayBooks = (activeTab === 'pending' ? pendingBooks : reflectedBooks).filter(b => 
+    b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+    (b.author || '').toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   if (loading) {
     return (
@@ -44,6 +48,18 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
         <h2 className="font-headline text-5xl md:text-6xl text-primary leading-tight">
           Reflection Journal
         </h2>
+
+        {/* Search Bar */}
+        <div className="flex items-center gap-3 px-4 py-3 bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl focus-within:border-primary/30 transition-all group">
+          <span className="material-symbols-outlined text-outline-variant group-focus-within:text-primary transition-colors text-xl">search</span>
+          <input 
+            type="text"
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            placeholder="Search journal..."
+            className="flex-1 bg-transparent border-none outline-none text-xs font-label text-on-surface placeholder:text-outline-variant/50"
+          />
+        </div>
       </header>
 
       {/* Segmented Tabs */}
@@ -77,16 +93,26 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
           {displayBooks.length === 0 ? (
             <div className="py-20 text-center border border-dashed border-outline-variant/30 rounded-2xl bg-surface-container-low/30">
               <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-4">
-                {activeTab === 'pending' ? 'history_edu' : 'edit_off'}
+                {searchQuery ? 'search_off' : (activeTab === 'pending' ? 'history_edu' : 'edit_off')}
               </span>
               <p className="font-headline italic text-xl text-on-surface-variant">
-                {activeTab === 'pending' ? 'All volumes have been synthesized.' : 'Your archive of reflections is currently empty.'}
+                {searchQuery ? 'No matched records.' : (activeTab === 'pending' ? 'All volumes have been synthesized.' : 'Your archive of reflections is currently empty.')}
               </p>
               <p className="text-sm text-outline-variant mt-2 max-w-xs mx-auto">
-                {activeTab === 'pending' 
-                  ? 'Complete a book to unlock its reflection sanctuary.' 
-                  : 'Synthesize your first reading experience to begin your journal.'}
+                {searchQuery 
+                  ? 'Your search query did not correlate with any current or archived volumes.' 
+                  : (activeTab === 'pending' 
+                      ? 'Complete a book to unlock its reflection sanctuary.' 
+                      : 'Synthesize your first reading experience to begin your journal.')}
               </p>
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery('')}
+                  className="mt-6 text-[10px] uppercase tracking-widest font-bold text-primary hover:underline transition-all"
+                >
+                  Clear Selection
+                </button>
+              )}
             </div>
           ) : (
             <div className="grid gap-4">

@@ -12,6 +12,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
   const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const [activeTab, setActiveTab] = useState<'now' | 'next' | 'completed'>('now');
+  const [searchQuery, setSearchQuery] = useState('');
 
   useEffect(() => {
     const fetchData = async () => {
@@ -53,6 +54,12 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
 
   const filteredBooks = books.filter(b => {
     const pages = b.current_page || 0;
+    const matchesSearch = 
+      b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+      (b.author || '').toLowerCase().includes(searchQuery.toLowerCase());
+
+    if (!matchesSearch) return false;
+
     if (activeTab === 'now') {
       return b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED';
     }
@@ -168,6 +175,8 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
           <span className="material-symbols-outlined text-outline-variant text-[20px]">search</span>
           <input 
             type="text" 
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search archive..." 
             className="bg-transparent border-none outline-none text-xs font-label w-full sm:w-40 placeholder:text-outline-variant/50"
           />
@@ -176,7 +185,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
 
       {/* Book Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12">
-        {filteredBooks.map((book) => {
+        {filteredBooks.length > 0 ? filteredBooks.map((book) => {
           const bookProgress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
           return (
             <article key={book.id} className="group cursor-pointer" onClick={() => onSelectBook(book.id)}>
@@ -207,7 +216,13 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent }: Das
               </div>
             </article>
           );
-        })}
+        }) : (
+          <div className="col-span-full py-20 text-center border-2 border-dashed border-outline-variant/10 rounded-3xl bg-surface-container-low/20">
+            <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-3">search_off</span>
+            <p className="font-headline italic text-xl text-on-surface-variant">No volumes found.</p>
+            <p className="text-sm text-outline-variant mt-1.5">Your query returned zero results from the archive.</p>
+          </div>
+        )}
       </div>
 
       {/* Asymmetric Detail Section */}
