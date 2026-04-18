@@ -116,7 +116,13 @@ async function startServer() {
   // Get all books
   app.get("/api/books", (req, res) => {
     try {
-      const books = db.prepare("SELECT * FROM books ORDER BY created_at DESC").all();
+      const books = db.prepare(`
+        SELECT b.*, 
+        CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as has_reflection 
+        FROM books b 
+        LEFT JOIN reflections r ON b.id = r.book_id 
+        ORDER BY b.created_at DESC
+      `).all();
       res.json(books);
     } catch (error) {
       console.error("Error fetching books:", error);

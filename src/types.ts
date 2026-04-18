@@ -11,6 +11,7 @@ export interface Book {
   mode: ReadingMode;
   cover_url?: string;
   created_at: string;
+  has_reflection?: boolean;
 }
 
 export interface ReadingLog {

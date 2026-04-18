@@ -11,6 +11,7 @@ import BookDetailView from './components/BookDetailView';
 import ReflectionView from './components/ReflectionView';
 import LogProgressView from './components/LogProgressView';
 import SuccessView from './components/SuccessView';
+import ReflectionIndexView from './components/ReflectionIndexView';
 import { Book } from './types';
 
 type View = 
@@ -18,6 +19,7 @@ type View =
   | { type: 'add' }
   | { type: 'detail'; bookId: number }
   | { type: 'reflection'; bookId: number }
+  | { type: 'reflection-index' }
   | { type: 'log-progress'; bookId: number }
   | { type: 'success'; bookId: number };
 
@@ -83,8 +85,14 @@ export default function App() {
         return (
           <ReflectionView 
             bookId={view.bookId} 
-            onBack={() => setView({ type: 'detail', bookId: view.bookId })} 
+            onBack={() => setView({ type: 'reflection-index' })} 
             onComplete={(id) => setView({ type: 'success', bookId: id })}
+          />
+        );
+      case 'reflection-index':
+        return (
+          <ReflectionIndexView 
+            onSelectBook={(id) => setView({ type: 'reflection', bookId: id })}
           />
         );
       case 'log-progress':
@@ -137,8 +145,9 @@ export default function App() {
             <button 
               onClick={() => {
                 if (view.type === 'detail') setView({ type: 'dashboard' });
-                else if (view.type === 'reflection') setView({ type: 'detail', bookId: view.bookId });
-                else if (view.type === 'log-progress') setView({ type: 'detail', bookId: view.bookId });
+                else if (view.type === 'reflection') setView({ type: 'reflection-index' });
+                else if (view.type === 'reflection-index') setView({ type: 'dashboard' });
+                else if (view.type === 'log-progress') setView({ type: 'detail', bookId: (view as any).bookId });
                 else setView({ type: 'dashboard' });
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
@@ -205,11 +214,10 @@ export default function App() {
           <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Log</span>
         </button>
         <button 
-          onClick={() => currentFocusId && setView({ type: 'reflection', bookId: currentFocusId })}
-          disabled={!currentFocusId}
-          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'reflection' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'} ${!currentFocusId ? 'opacity-30 cursor-not-allowed' : ''}`}
+          onClick={() => setView({ type: 'reflection-index' })}
+          className={`flex flex-col items-center justify-center transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'text-on-surface scale-105 font-bold' : 'text-outline-variant hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[24px]">auto_stories</span>
+          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'reflection-index' || view.type === 'reflection' ? "'FILL' 1" : "'FILL' 0" }}>auto_stories</span>
           <span className="font-sans text-[10px] uppercase tracking-widest mt-1">Reflect</span>
         </button>
       </nav>
