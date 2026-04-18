@@ -6,14 +6,17 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import multer from "multer";
 
+console.log("--- The Archivist Server: Sequential Startup Initiated ---");
+
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const db = new Database("reading_tracker.db");
+let db: any;
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
 if (!fs.existsSync(uploadsDir)) {
+  console.log("Creating uploads sanctuary...");
   fs.mkdirSync(uploadsDir);
 }
 
@@ -32,9 +35,13 @@ const upload = multer({ storage: storage });
 
 async function startServer() {
   try {
+    console.log("Initializing database connection...");
+    db = new Database("reading_tracker.db");
+    
     const app = express();
     const PORT = 3000;
 
+    console.log("Running database migrations...");
     // Initialize Database
     db.exec(`
       CREATE TABLE IF NOT EXISTS books (
@@ -101,41 +108,41 @@ async function startServer() {
     next();
   });
 
-  // Health check
-  app.get("/api/health", (req, res) => {
-    try {
-      db.prepare("SELECT count(*) FROM books").get();
-      res.json({ status: "ok", timestamp: new Date().toISOString(), database: "connected" });
-    } catch (e) {
-      res.status(500).json({ status: "error", message: e instanceof Error ? e.message : String(e) });
-    }
-  });
-
-  // API Routes
-  
   // Get all books
   app.get("/api/books", (req, res) => {
     try {
+      console.log("Archive: Fetching volumes...");
       const books = db.prepare(`
         SELECT b.*, 
-        CASE WHEN r.id IS NOT NULL AND r.learning IS NOT NULL AND r.learning != '' AND r.application IS NOT NULL AND r.application != '' AND r.disagreement IS NOT NULL AND r.disagreement != '' THEN 1 ELSE 0 END as is_full_reflection,
-        CASE WHEN r.id IS NOT NULL THEN 1 ELSE 0 END as has_reflection 
+        (SELECT COUNT(*) FROM reflections r WHERE r.book_id = b.id AND r.learning IS NOT NULL AND r.learning != '') as is_full_reflection,
+        (SELECT COUNT(*) FROM reflections r WHERE r.book_id = b.id) as has_reflection 
         FROM books b 
-        LEFT JOIN reflections r ON b.id = r.book_id 
         ORDER BY b.created_at DESC
       `).all();
+      
+      // Convert 1/0 counts to booleans for the client if needed, 
+      // but the client logic books.filter(b => b.is_full_reflection) will work with 1/0.
       res.json(books);
     } catch (error) {
-      console.error("Error fetching books:", error);
+      console.error("Archive Error: Failed to fetch books:", error);
       res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Health check - moved higher
+  app.get("/api/health", (req, res) => {
+    try {
+      res.json({ status: "ok", sanctuary: "online" });
+    } catch (e) {
+      res.status(500).json({ error: "Sanctum unstable" });
     }
   });
 
   // Add new book
   app.post("/api/books", upload.single("cover"), (req, res) => {
     try {
-      const { title, author, total_pages, mode } = req.body;
-      const cover_url = req.file ? `/uploads/${req.file.filename}` : null;
+      const { title, author, total_pages, mode, cover_url: body_cover_url } = req.body;
+      const cover_url = req.file ? `/uploads/${req.file.filename}` : (body_cover_url || null);
 
       const info = db.prepare(
         "INSERT INTO books (title, author, total_pages, mode, cover_url) VALUES (?, ?, ?, ?, ?)"
@@ -322,6 +329,12 @@ async function startServer() {
     }
   });
 
+  // 404 catch-all for API ONLY
+  app.use("/api/*", (req, res) => {
+    console.warn(`Attempt to access non-existent chronicle: ${req.method} ${req.url}`);
+    res.status(404).json({ error: "Chronicle not found" });
+  });
+
   // Vite setup
   if (process.env.NODE_ENV !== "production") {
     const vite = await createViteServer({
@@ -338,12 +351,15 @@ async function startServer() {
   }
 
   app.listen(PORT, "0.0.0.0", () => {
-    console.log(`Server running on http://localhost:${PORT}`);
+    console.log(`--- The Archivist Server: Online at http://0.0.0.0:${PORT} ---`);
   });
   } catch (error) {
-    console.error("FATAL ERROR during server startup:", error);
+    console.error("!!! FATAL ERROR during server startup !!!");
+    console.error(error);
     process.exit(1);
   }
 }
 
-startServer();
+startServer().catch(err => {
+  console.error("Top-level promise rejection in server:", err);
+});
