@@ -412,20 +412,26 @@ async function startServer() {
       const activeDaysCount = logDates.length || 1;
       const averagePagesPerDay = Math.round(totalPagesRead / activeDaysCount);
 
-      // 6. Last 7 days trend
-      const last7Days = [];
-      for (let i = 6; i >= 0; i--) {
-        const d = new Date();
+      // 6. Last 35 days trend (5 full weeks to align grid)
+      const last35Days = [];
+      const now = new Date();
+      
+      // Calculate how many days to go back to start from a Sunday
+      // now.getDay() returns 0 for Sunday, 1 for Monday, etc.
+      // We want to show 5 full weeks ending with the current week's Saturday (or today)
+      // To keep it simple and consistent: 35 days ending today.
+      for (let i = 34; i >= 0; i--) {
+        const d = new Date(now);
         d.setDate(d.getDate() - i);
         
-        // Construct YYYY-MM-DD in local time
-        const year = d.getFullYear();
-        const month = String(d.getMonth() + 1).padStart(2, '0');
-        const day = String(d.getDate()).padStart(2, '0');
-        const dateStr = `${year}-${month}-${day}`;
-
+        const dateStr = d.toISOString().split('T')[0];
         const pagesRead = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(dateStr).total || 0;
-        last7Days.push({ day: d.toLocaleDateString(undefined, { weekday: 'short' }), pages: pagesRead });
+        last35Days.push({ 
+          day: d.toLocaleDateString(undefined, { weekday: 'short' }), 
+          pages: pagesRead, 
+          fullDate: dateStr,
+          dayOfWeek: d.getDay() // 0-6
+        });
       }
 
       // 7. Recent reflections preview
@@ -445,7 +451,7 @@ async function startServer() {
           streak,
           averagePagesPerDay
         },
-        trend: last7Days,
+        trend: last35Days,
         recentReflections
       });
     } catch (error) {

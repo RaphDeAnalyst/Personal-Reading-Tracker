@@ -9,7 +9,7 @@ interface InsightsData {
     streak: number;
     averagePagesPerDay: number;
   };
-  trend: { day: string; pages: number }[];
+  trend: { day: string; pages: number; fullDate: string }[];
   recentReflections: { content: string; rating: number; title: string; author: string }[];
 }
 
@@ -53,7 +53,46 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
   if (!data) return null;
 
-  const maxTrend = Math.max(...data.trend.map(t => t.pages), 1);
+  // Ensure grid starts on Sunday (dayOfWeek 0)
+  const firstDay = data.trend[0];
+  const paddingNeeded = firstDay.dayOfWeek || 0;
+  const paddedTrend = [
+    ...Array(paddingNeeded).fill(null),
+    ...data.trend
+  ];
+
+  const last7Days = data.trend.slice(-7);
+  const maxPages = Math.max(...last7Days.map(t => t.pages), 10);
+  const dailyAverageThreshold = data.stats.averagePagesPerDay;
+  const peakPages = Math.max(...last7Days.map(t => t.pages));
+  
+  const daysWithReading = data.trend.filter(t => t.pages > 0).length;
+  const consistencyQuotient = Math.round((daysWithReading / 30) * 100);
+
+  // --- Chronicle Wave Logic ---
+  const chartHeight = 120;
+  const chartWidth = 800; // Large enough for smooth resolution
+  const points = data.trend.slice(-30).map((t, i) => ({
+    x: (i / 29) * chartWidth,
+    y: chartHeight - (Math.min(t.pages / (Math.max(maxPages, 10)), 1) * chartHeight)
+  }));
+
+  // Simple Smoothing: Quadratic Bezier helper
+  const generatePath = (pts: {x: number, y: number}[]) => {
+    if (pts.length < 2) return "";
+    let d = `M ${pts[0].x},${pts[0].y}`;
+    for (let i = 0; i < pts.length - 1; i++) {
+      const curr = pts[i];
+      const next = pts[i+1];
+      const midX = (curr.x + next.x) / 2;
+      d += ` Q ${curr.x},${curr.y} ${midX},${(curr.y + next.y) / 2}`;
+    }
+    d += ` L ${pts[pts.length - 1].x},${pts[pts.length - 1].y}`;
+    return d;
+  };
+
+  const pathD = generatePath(points);
+  const areaD = `${pathD} L ${chartWidth},${chartHeight} L 0,${chartHeight} Z`;
 
   return (
     <div className="max-w-4xl mx-auto pb-24">
@@ -107,32 +146,220 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Trend Section */}
         <div className="lg:col-span-2 space-y-8">
-          <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10">
-            <h3 className="font-headline italic text-xl mb-8 flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary">trending_up</span>
-              Reading Activity
-            </h3>
-            <div className="flex items-end justify-between h-48 gap-2 pt-4">
-              {data.trend.map((t, i) => (
-                <div key={i} className="flex-1 flex flex-col items-center gap-3 group">
-                <div className="relative w-full flex flex-col items-center justify-end h-full">
-                    <motion.div 
-                      initial={{ height: 0 }}
-                      animate={{ height: `${Math.max((t.pages / maxTrend) * 100, 2)}%` }}
-                      transition={{ duration: 0.8, delay: i * 0.1 }}
-                      className="w-full max-w-[40px] bg-primary/60 rounded-t-sm group-hover:bg-primary/100 transition-colors relative border border-primary/30 min-h-[6px]"
-                    >
-                      {t.pages > 0 && (
-                        <div className="absolute -top-8 left-1/2 -translate-x-1/2 bg-surface border border-outline-variant/20 text-[10px] font-bold px-2 py-1 rounded shadow-md opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-20">
-                          {t.pages} p.
-                        </div>
-                      )}
-                    </motion.div>
-                    </div>
-
-                  <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{t.day}</span>
+          <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-10">
+              <h3 className="font-headline italic text-xl flex items-center gap-3">
+                <span className="material-symbols-outlined text-primary">trending_up</span>
+                Reading Momentum
+              </h3>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary/30"></div>
+                  <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Standard</span>
                 </div>
-              ))}
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>
+                  <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Growth</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="relative h-64 flex flex-col pt-8">
+              {/* Y-Axis Scale Lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-12 pr-2">
+                {[...Array(4)].map((_, i) => (
+                  <div key={i} className="w-full flex items-center gap-3">
+                    <span className="font-label text-[10px] font-bold text-on-surface w-8 text-right uppercase tracking-tighter">
+                      {Math.round((maxPages * (1 - i / 3)))}p.
+                    </span>
+                    <div className="flex-1 h-[1px] bg-on-surface/20 border-t border-dashed border-on-surface/10"></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* Momentum Line (Dashed) */}
+              {dailyAverageThreshold > 0 && (
+                <div 
+                  className="absolute left-11 right-0 border-t-2 border-dashed border-tertiary z-10 group"
+                  style={{ bottom: `${Math.max((dailyAverageThreshold / maxPages) * 208 + 48, 56)}px` }}
+                >
+                  <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest opacity-100 shadow-sm">
+                    Goal: {dailyAverageThreshold}p
+                  </div>
+                </div>
+              )}
+
+              {/* Bars Container */}
+              <div className="flex justify-between h-full gap-2 sm:gap-4 pl-11 relative z-20">
+                {last7Days.map((t, i) => {
+                  const isPeak = t.pages === peakPages && peakPages > 0;
+                  const isAboveAverage = t.pages >= dailyAverageThreshold && t.pages > 0;
+                  
+                  return (
+                    <div key={i} className="flex-1 flex flex-col items-center group h-full">
+                      <div className="relative w-full flex-1 flex flex-col items-center justify-end">
+                        <motion.div 
+                          initial={{ height: 0 }}
+                          animate={{ height: `${Math.max((t.pages / maxPages) * 100, 2)}%` }}
+                          transition={{ duration: 0.8, delay: i * 0.1 }}
+                          className={`w-full max-w-[32px] rounded-t-sm transition-all relative border min-h-[4px] ${
+                            isAboveAverage 
+                              ? 'bg-primary border-primary shadow-[0_0_12px_rgba(var(--color-primary),0.4)]' 
+                              : 'bg-primary/40 border-primary/20'
+                          }`}
+                        >
+                          {/* Tooltip / Label */}
+                          <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-high border border-outline-variant/20 text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 transform group-hover:-translate-y-1`}>
+                            <span className="text-on-surface">{t.pages} pages</span>
+                            {isPeak && <span className="ml-1.5 text-tertiary">★ Peak</span>}
+                          </div>
+
+                          {/* Peak Indicator (Icon) */}
+                          {isPeak && (
+                             <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-primary animate-bounce">
+                               <span className="material-symbols-outlined text-[14px]">stat_3</span>
+                             </div>
+                          )}
+                        </motion.div>
+                      </div>
+
+                      <div className="flex flex-col items-center gap-1">
+                        <span className={`font-label text-[9px] uppercase tracking-widest font-bold ${t.pages > 0 ? 'text-on-surface' : 'text-on-surface-variant/40'}`}>
+                          {t.day}
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+            
+            {/* Descriptive Context Area */}
+            <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+              <p className="font-headline italic text-xs text-on-surface-variant max-w-[280px]">
+                {peakPages > dailyAverageThreshold 
+                  ? "Your momentum is gathering strength. The archives are expanding with your consistency." 
+                  : "The archive grows in silence. Every page read is a small victory over oblivion."}
+              </p>
+              <div className="text-right shrink-0">
+                <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Weekly Volume</span>
+                <span className="serif-text text-2xl text-primary font-medium">{last7Days.reduce((sum, t) => sum + t.pages, 0)} Pages</span>
+              </div>
+            </div>
+          </section>
+
+          {/* Monthly Chronicle Wave */}
+          <section className="bg-surface-container-low p-6 sm:p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
+            <div className="flex justify-between items-center mb-10">
+              <div className="min-w-0">
+                <h3 className="font-headline italic text-xl flex items-center gap-3">
+                  <span className="material-symbols-outlined text-tertiary">landscape</span>
+                  The Chronicle Wave
+                </h3>
+                <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Momentum Terrain</p>
+              </div>
+              <div className="text-right">
+                <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency Quotient</span>
+                <span className="serif-text text-xl text-tertiary font-medium">{consistencyQuotient}%</span>
+              </div>
+            </div>
+
+            <div className="relative h-48 w-full mt-4">
+              {/* Y-Axis scale lines */}
+              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
+                {[...Array(3)].map((_, i) => (
+                  <div key={i} className="w-full flex items-center gap-3">
+                    <span className="font-label text-[9px] font-bold text-on-surface w-8 text-right uppercase">
+                      {Math.round((maxPages * (1 - i / 2)))}p.
+                    </span>
+                    <div className="flex-1 h-[1px] bg-on-surface/20 border-t border-dashed border-on-surface/10"></div>
+                  </div>
+                ))}
+              </div>
+
+              {/* The SVG Wave */}
+              <div className="absolute inset-0 pl-11 pb-6">
+                <svg 
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
+                  preserveAspectRatio="none"
+                  className="w-full h-full overflow-visible"
+                >
+                  <defs>
+                    <linearGradient id="auraGradient" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
+                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
+                    </linearGradient>
+                  </defs>
+                  
+                  {/* Area Fill */}
+                  <motion.path 
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    transition={{ duration: 1 }}
+                    d={areaD} 
+                    fill="url(#auraGradient)" 
+                  />
+
+                  {/* Wave Line (Ink) */}
+                  <motion.path 
+                    initial={{ pathLength: 0, opacity: 0 }}
+                    animate={{ pathLength: 1, opacity: 1 }}
+                    transition={{ duration: 1.5, ease: "easeInOut" }}
+                    d={pathD} 
+                    fill="none" 
+                    stroke="var(--color-primary)" 
+                    strokeWidth="3" 
+                    strokeLinecap="round"
+                    className="opacity-100"
+                  />
+
+                  {/* Wisdom Nodes (Reflections) */}
+                  {data.trend.slice(-30).map((t, i) => {
+                    if (t.pages === 0) return null;
+                    const pt = points[i];
+                    
+                    // Logic to see if a reflection exists for this day 
+                    const isWisdomPeak = t.pages > (maxPages * 0.8);
+                    
+                    return (
+                      <g key={i} className="group/node">
+                        <motion.circle 
+                          initial={{ scale: 0 }}
+                          animate={{ scale: 1 }}
+                          transition={{ delay: 1.5 + (i * 0.02) }}
+                          cx={pt.x} 
+                          cy={pt.y} 
+                          r={isWisdomPeak ? "5" : "3"} 
+                          fill={isWisdomPeak ? "var(--color-tertiary)" : "var(--color-primary)"}
+                          stroke="var(--color-background)"
+                          strokeWidth="1"
+                          className="cursor-help"
+                        />
+                        {/* Hover Circle */}
+                        <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" className="cursor-help" />
+                      </g>
+                    );
+                  })}
+                </svg>
+              </div>
+            </div>
+
+            <div className="mt-8 pt-6 border-t border-on-surface/10 flex justify-between items-end">
+              <div className="flex gap-8">
+                 <div className="flex flex-col gap-1">
+                   <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">Timeframe</span>
+                   <span className="text-[11px] font-bold text-on-surface/80">Last 30 Days</span>
+                 </div>
+                 <div className="flex flex-col gap-1">
+                   <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">Total Depth</span>
+                   <span className="text-[11px] font-bold text-on-surface/80">{data.stats.totalPagesRead} Pages archived</span>
+                 </div>
+              </div>
+              <div className="text-right">
+                 <p className="font-headline italic text-sm text-on-surface max-w-[200px] leading-tight">
+                   "The terrain of your wisdom is ever-shifting. Every peak reached opens a new horizon."
+                 </p>
+              </div>
             </div>
           </section>
 

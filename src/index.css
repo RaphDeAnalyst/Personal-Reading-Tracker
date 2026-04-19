@@ -57,6 +57,14 @@
   --color-secondary-dim: #55534e;
   --color-secondary-fixed: #e6e2dc;
 
+  --color-heatmap-0: #ebedf0;
+  --color-heatmap-1: #9be9a8;
+  --color-heatmap-2: #40c463;
+  --color-heatmap-3: #30a14e;
+  --color-heatmap-4: #216e39;
+
+  --color-heatmap-border: rgba(27, 31, 35, 0.06);
+
   @keyframes tap-scale {
     0% { transform: scale(1); }
     50% { transform: scale(0.96); }
@@ -108,6 +116,14 @@
   --color-inverse-on-surface: #32302f;
   --color-surface-bright: #3b3937;
   --color-surface-dim: #141413;
+
+  --color-heatmap-0: #21262d;
+  --color-heatmap-1: #0e4429;
+  --color-heatmap-2: #006d32;
+  --color-heatmap-3: #26a641;
+  --color-heatmap-4: #39d353;
+
+  --color-heatmap-border: rgba(255, 255, 255, 0.05);
 }
 
 @layer base {
