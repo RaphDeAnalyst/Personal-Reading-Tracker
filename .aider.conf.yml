@@ -8,15 +8,7 @@ read:
   - README.md
   - package.json
   - tsconfig.json
-
-  # Entry points (critical for architecture understanding)
-  - index.*
-  - main.*
-  - app.*
-
-  # Core source code
-  - src/
-
-  # Config layer
-  - config/
   - .env.example
+
+  # entry point for Vite/React
+  - src/

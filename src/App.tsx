@@ -44,6 +44,9 @@ export default function App() {
   const [fontPreference, setFontPreference] = useState<'serif' | 'sans'>(() => {
     return (localStorage.getItem('reading-font-pref') as 'serif' | 'sans') || 'serif';
   });
+  const [theme, setTheme] = useState<'light' | 'dark'>(() => {
+    return (localStorage.getItem('reading-theme') as 'light' | 'dark') || 'light';
+  });
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -58,6 +61,13 @@ export default function App() {
     setFontPreference(next);
     localStorage.setItem('reading-font-pref', next);
     showToast(`Font preference updated to ${next}`, "info");
+  };
+
+  const toggleTheme = () => {
+    const next = theme === 'light' ? 'dark' : 'light';
+    setTheme(next);
+    localStorage.setItem('reading-theme', next);
+    showToast(`Theme updated to ${next} mode`, "info");
   };
 
   const checkStatus = async () => {
@@ -139,7 +149,7 @@ export default function App() {
           />
         );
       case 'insights':
-        return <InsightsView showToast={showToast} fontPreference={fontPreference} onToggleFont={toggleFont} />;
+        return <InsightsView showToast={showToast} fontPreference={fontPreference} onToggleFont={toggleFont} theme={theme} onToggleTheme={toggleTheme} />;
       case 'log-progress':
         return (
           <LogProgressView 
@@ -173,7 +183,7 @@ export default function App() {
   const isReading = view.type === 'reader';
 
   return (
-    <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container font-pref-${fontPreference} ${isReading ? 'overflow-hidden' : ''}`}>
+    <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container font-pref-${fontPreference} ${theme} ${isReading ? 'overflow-hidden' : ''}`}>
       {!isReading && (
         <>
           <Sidebar 
@@ -242,7 +252,7 @@ export default function App() {
         </div>
         <h1 
           onClick={() => setView({ type: 'dashboard' })}
-          className="font-headline italic text-2xl tracking-tight text-[#37352F] cursor-pointer"
+          className="font-headline italic text-2xl tracking-tight text-on-surface cursor-pointer"
         >
           The Archivist
         </h1>

@@ -38,7 +38,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView }: Si
               className="fixed top-0 left-0 h-full w-[280px] bg-background border-r border-outline-variant/10 z-[70] shadow-2xl lg:shadow-none flex flex-col"
             >
               <div className="p-6 h-16 flex items-center justify-between border-b border-outline-variant/5">
-                <span className="font-headline italic text-xl tracking-tight text-[#37352F]">Archivist</span>
+                <span className="font-headline italic text-xl tracking-tight text-on-surface">Archivist</span>
                 <button 
                   onClick={onClose}
                   className="p-2 text-on-surface-variant hover:text-on-surface transition-colors"

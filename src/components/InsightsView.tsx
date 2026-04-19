@@ -17,9 +17,11 @@ interface InsightsViewProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
   fontPreference: 'serif' | 'sans';
   onToggleFont: () => void;
+  theme: 'light' | 'dark';
+  onToggleTheme: () => void;
 }
 
-export default function InsightsView({ showToast, fontPreference, onToggleFont }: InsightsViewProps) {
+export default function InsightsView({ showToast, fontPreference, onToggleFont, theme, onToggleTheme }: InsightsViewProps) {
   const [data, setData] = useState<InsightsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -55,9 +57,23 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont }
 
   return (
     <div className="max-w-4xl mx-auto pb-24">
-      <header className="mb-12">
-        <h2 className="serif-text text-4xl text-on-surface mb-2">My Journey</h2>
-        <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest">Insights & Growth</p>
+      <header className="mb-12 flex justify-between items-start">
+        <div>
+          <h2 className="serif-text text-4xl text-on-surface mb-2">My Journey</h2>
+          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest">Insights & Growth</p>
+        </div>
+        <button 
+          onClick={onToggleTheme}
+          className="group relative flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/10 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all shadow-sm active:scale-95"
+          title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+        >
+          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
+            {theme === 'light' ? 'dark_mode' : 'light_mode'}
+          </span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">
+            {theme === 'light' ? 'Dark' : 'Light'} Mode
+          </span>
+        </button>
       </header>
 
       {/* Core Stats Grid */}
@@ -174,6 +190,24 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont }
                     className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${fontPreference === 'sans' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                   >
                     Sans
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex flex-col gap-3">
+                <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Appearance</span>
+                <div className="flex bg-surface-container-high p-1 rounded-lg">
+                  <button 
+                    onClick={() => theme !== 'light' && onToggleTheme()}
+                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  >
+                    Light
+                  </button>
+                  <button 
+                    onClick={() => theme !== 'dark' && onToggleTheme()}
+                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                  >
+                    Dark
                   </button>
                 </div>
               </div>
