@@ -10,9 +10,10 @@ interface PDFReaderProps {
   bookId: number;
   onBack: () => void;
   onFinish: () => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) {
+export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFReaderProps) {
   const [book, setBook] = useState<Book | null>(null);
   const [loading, setLoading] = useState(true);
   const [currentPage, setCurrentPage] = useState(1);
@@ -24,6 +25,7 @@ export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) 
     const fetchBook = async () => {
       try {
         const res = await fetch(`/api/books/${bookId}`);
+        if (!res.ok) throw new Error("Fetch failed");
         const data = await res.json();
         setBook(data);
         setCurrentPage(Math.max(1, data.current_page || 1));
@@ -32,9 +34,12 @@ export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) 
           const loadingTask = pdfjsLib.getDocument(data.pdf_file_path);
           const pdfDoc = await loadingTask.promise;
           setPdf(pdfDoc);
+        } else {
+          showToast?.("No digital manuscript found for this volume", "error");
         }
       } catch (err) {
         console.error("Reader: Failed to load manuscript", err);
+        showToast?.("Failed to consult the digital manuscript", "error");
       } finally {
         setLoading(false);
       }
@@ -71,6 +76,7 @@ export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) 
       await page.render(renderContext).promise;
     } catch (err) {
       console.error("Render failed", err);
+      showToast?.("Failed to render the current page", "error");
     } finally {
       setRendering(false);
     }
@@ -79,19 +85,21 @@ export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) 
   const saveProgress = async (page: number) => {
     if (!book) return;
     try {
-      await fetch(`/api/books/${bookId}/logs`, {
+      const res = await fetch(`/api/books/${bookId}/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentPage: page,
-          pagesRead: 0, // Automatic tracking handles the difference internally now
+          pagesRead: 0, 
           date: new Date().toISOString().split('T')[0]
         })
       });
+      if (!res.ok) console.warn("Background progress sync failed");
     } catch (err) {
       console.error("Failed to sync progress", err);
     }
   };
+
 
   const nextPage = () => {
     if (pdf && currentPage < pdf.numPages) {

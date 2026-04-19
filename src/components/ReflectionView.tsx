@@ -5,9 +5,10 @@ interface ReflectionViewProps {
   bookId: number;
   onBack: () => void;
   onComplete: (bookId: number) => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function ReflectionView({ bookId, onBack, onComplete }: ReflectionViewProps) {
+export default function ReflectionView({ bookId, onBack, onComplete, showToast }: ReflectionViewProps) {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [learning, setLearning] = useState('');
   const [application, setApplication] = useState('');
@@ -24,6 +25,10 @@ export default function ReflectionView({ bookId, onBack, onComplete }: Reflectio
           setApplication(data.reflection.application || '');
           setDisagreement(data.reflection.disagreement || '');
         }
+      })
+      .catch(err => {
+        console.error("Fetch book error", err);
+        showToast?.("Failed to retrieve book for reflection", "error");
       });
   }, [bookId]);
 
@@ -52,19 +57,26 @@ export default function ReflectionView({ bookId, onBack, onComplete }: Reflectio
       }
 
       // Always mark as COMPLETED
-      await fetch(`/api/books/${bookId}`, {
+      const res = await fetch(`/api/books/${bookId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'COMPLETED' })
       });
-      
-      onComplete(bookId);
+
+      if (res.ok) {
+        showToast?.("Volume fully archived with reflections", "success");
+        onComplete(bookId);
+      } else {
+        showToast?.("Failed to finalize volume", "error");
+      }
     } catch (error) {
       console.error("Completion error", error);
+      showToast?.("Network error while finalizing volume", "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   if (!bookDetail) return (
     <div className="min-h-screen flex items-center justify-center">

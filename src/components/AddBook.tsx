@@ -8,9 +8,10 @@ pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
 interface AddBookProps {
   onBack: () => void;
   onAdded: () => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function AddBook({ onBack, onAdded }: AddBookProps) {
+export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
   const [formData, setFormData] = useState({
@@ -39,7 +40,12 @@ export default function AddBook({ onBack, onAdded }: AddBookProps) {
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setSelectedFile(e.target.files[0]);
+      const file = e.target.files[0];
+      if (file.size > 10 * 1024 * 1024) {
+        showToast?.("Cover image is too large (max 10MB)", "error");
+        return;
+      }
+      setSelectedFile(file);
       // Clear URL if file is picked
       setFormData(prev => ({ ...prev, cover_url: '' }));
     }
@@ -66,20 +72,25 @@ export default function AddBook({ onBack, onAdded }: AddBookProps) {
         const author = info?.Author || '';
 
         // 3. Extract First Page as Cover
-        const page = await pdf.getPage(1);
-        const viewport = page.getViewport({ scale: 0.5 });
-        const canvas = document.createElement('canvas');
-        const context = canvas.getContext('2d');
-        canvas.height = viewport.height;
-        canvas.width = viewport.width;
+        try {
+          const page = await pdf.getPage(1);
+          const viewport = page.getViewport({ scale: 0.5 });
+          const canvas = document.createElement('canvas');
+          const context = canvas.getContext('2d');
+          canvas.height = viewport.height;
+          canvas.width = viewport.width;
 
-        if (context) {
-          await page.render({ canvasContext: context, viewport, canvas }).promise;
-          const coverBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
-          if (coverBlob) {
-            const coverFile = new File([coverBlob], 'cover.jpg', { type: 'image/jpeg' });
-            setSelectedFile(coverFile);
+          if (context) {
+            await page.render({ canvasContext: context, viewport, canvas }).promise;
+            const coverBlob = await new Promise<Blob | null>(resolve => canvas.toBlob(resolve, 'image/jpeg', 0.8));
+            if (coverBlob) {
+              const coverFile = new File([coverBlob], 'cover.jpg', { type: 'image/jpeg' });
+              setSelectedFile(coverFile);
+            }
           }
+        } catch (coverErr) {
+          console.warn("Failed to extract cover from PDF", coverErr);
+          // Non-critical, continue
         }
 
         setFormData(prev => ({
@@ -88,9 +99,12 @@ export default function AddBook({ onBack, onAdded }: AddBookProps) {
           author: prev.author || author,
           total_pages: pageCount.toString()
         }));
+        
+        showToast?.("Metadata extracted from manuscript", "success");
 
       } catch (err) {
         console.error("PDF Extraction failed", err);
+        showToast?.("Failed to parse manuscript. Please enter details manually.", "error");
       } finally {
         setExtracting(false);
       }
@@ -99,6 +113,11 @@ export default function AddBook({ onBack, onAdded }: AddBookProps) {
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
+    if (!formData.title || !formData.total_pages) {
+      showToast?.("Title and page count are required", "error");
+      return;
+    }
+
     setLoading(true);
     try {
       const data = new FormData();
@@ -123,17 +142,20 @@ export default function AddBook({ onBack, onAdded }: AddBookProps) {
       });
 
       if (res.ok) {
+        showToast?.(`${formData.title} archived successfully`, "success");
         onAdded();
       } else {
         const err = await res.json();
-        alert(`Failure to archive new entry: ${err.error || 'Check fields.'}`);
+        showToast?.(err.error || "Failure to archive volume", "error");
       }
     } catch (e) {
       console.error("Add book error", e);
+      showToast?.("Network error while archiving volume", "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   return (
     <main className="pt-12 pb-32 px-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">

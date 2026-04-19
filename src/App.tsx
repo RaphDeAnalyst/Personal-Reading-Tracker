@@ -26,12 +26,27 @@ type View =
   | { type: 'reader'; bookId: number }
   | { type: 'success'; bookId: number };
 
+export interface Toast {
+  id: number;
+  message: string;
+  type: 'success' | 'error' | 'info';
+}
+
 export default function App() {
   const [view, setView] = useState<View>({ type: 'dashboard' });
   const [loggedToday, setLoggedToday] = useState(false);
   const [currentFocusId, setCurrentFocusId] = useState<number | null>(null);
   const [showAlert, setShowAlert] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+  const [toasts, setToasts] = useState<Toast[]>([]);
+
+  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = Date.now();
+    setToasts(prev => [...prev, { id, message, type }]);
+    setTimeout(() => {
+      setToasts(prev => prev.filter(t => t.id !== id));
+    }, 4000);
+  };
 
   const checkStatus = async () => {
     try {
@@ -71,10 +86,11 @@ export default function App() {
             onSelectBook={(id) => setView({ type: 'detail', bookId: id })} 
             onAddBook={() => setView({ type: 'add' })} 
             onLogCurrent={() => currentFocusId && setView({ type: 'log-progress', bookId: currentFocusId })}
+            showToast={showToast}
           />
         );
       case 'add':
-        return <AddBook onBack={() => setView({ type: 'dashboard' })} onAdded={() => { fetchBooks(); setView({ type: 'dashboard' }); }} />;
+        return <AddBook onBack={() => setView({ type: 'dashboard' })} onAdded={() => { fetchBooks(); setView({ type: 'dashboard' }); }} showToast={showToast} />;
       case 'detail':
         return (
           <BookDetailView 
@@ -84,6 +100,7 @@ export default function App() {
             onWriteReflection={(id) => setView({ type: 'reflection', bookId: id })}
             onOpenReader={(id) => setView({ type: 'reader', bookId: id })}
             onDelete={() => { fetchBooks(); setView({ type: 'dashboard' }); }}
+            showToast={showToast}
           />
         );
       case 'reflection':
@@ -92,6 +109,7 @@ export default function App() {
             bookId={view.bookId} 
             onBack={() => setView({ type: 'reflection-index' })} 
             onComplete={(id) => setView({ type: 'success', bookId: id })}
+            showToast={showToast}
           />
         );
       case 'reflection-index':
@@ -107,6 +125,7 @@ export default function App() {
             onBack={() => setView({ type: 'detail', bookId: view.bookId })} 
             onSaved={() => { checkStatus(); setView({ type: 'detail', bookId: view.bookId }); }} 
             onViewJournal={(id) => setView({ type: 'reflection', bookId: id })}
+            showToast={showToast}
           />
         );
       case 'reader':
@@ -115,6 +134,7 @@ export default function App() {
             bookId={view.bookId} 
             onBack={() => setView({ type: 'detail', bookId: view.bookId })}
             onFinish={() => setView({ type: 'success', bookId: view.bookId })}
+            showToast={showToast}
           />
         );
       case 'success':
@@ -145,8 +165,14 @@ export default function App() {
           />
 
       {/* Top Alert Banner */}
+      <AnimatePresence>
       {showAlert && !loggedToday && (
-        <div className={`fixed top-16 right-0 w-full z-40 bg-secondary-container/30 backdrop-blur-md border-b border-outline-variant/5 transition-all duration-300`}>
+        <motion.div 
+          initial={{ height: 0, opacity: 0 }}
+          animate={{ height: 'auto', opacity: 1 }}
+          exit={{ height: 0, opacity: 0 }}
+          className={`fixed top-16 left-0 right-0 w-full z-40 bg-secondary-container/30 backdrop-blur-md border-b border-outline-variant/5 overflow-hidden`}
+        >
           <div className="px-6 py-2.5 flex items-center justify-between max-w-5xl mx-auto">
             <div className="flex items-center gap-3">
               <span className="material-symbols-outlined text-primary text-[18px]">event_note</span>
@@ -162,8 +188,9 @@ export default function App() {
               <span className="material-symbols-outlined text-lg">close</span>
             </button>
           </div>
-        </div>
+        </motion.div>
       )}
+      </AnimatePresence>
 
       {/* Top Header */}
       <header className={`fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background/95 backdrop-blur-sm border-b border-outline-variant/5 transition-all duration-300`}>
@@ -209,7 +236,7 @@ export default function App() {
       )}
 
       {/* Main Content Area */}
-      <main className={`transition-all duration-300 ${isReading ? 'p-0 pt-0 max-w-none' : (showAlert && !loggedToday ? 'pt-36' : 'pt-24')} pb-32 px-6 max-w-5xl mx-auto`}>
+      <main className={`transition-all duration-300 ${isReading ? 'p-0 pt-0 max-w-none' : (showAlert && !loggedToday ? 'pt-32' : 'pt-20')} pb-32 px-6 max-w-5xl mx-auto`}>
         <AnimatePresence mode="wait">
           <motion.div
             key={view.type + (view.type === 'detail' || view.type === 'reflection' || view.type === 'log-progress' || view.type === 'reader' ? (view as any).bookId : '')}
@@ -222,6 +249,30 @@ export default function App() {
           </motion.div>
         </AnimatePresence>
       </main>
+
+      {/* Toast Container */}
+      <div className="fixed bottom-24 md:bottom-32 left-1/2 -translate-x-1/2 z-[100] flex flex-col gap-2 pointer-events-none">
+        <AnimatePresence>
+          {toasts.map(toast => (
+            <motion.div
+              key={toast.id}
+              initial={{ opacity: 0, y: 20, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
+              className={`px-4 py-2.5 rounded-lg shadow-lg text-xs font-label font-bold uppercase tracking-widest flex items-center gap-3 border pointer-events-auto ${
+                toast.type === 'success' ? 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' : 
+                toast.type === 'error' ? 'bg-error-container text-on-error-container border-error/20' : 
+                'bg-surface-container-high text-on-surface border-outline-variant/20'
+              }`}
+            >
+              <span className="material-symbols-outlined text-[18px]">
+                {toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'info'}
+              </span>
+              {toast.message}
+            </motion.div>
+          ))}
+        </AnimatePresence>
+      </div>
 
       {/* Responsive Navigation DOCK (Desktop: Visible | Mobile: Hidden) */}
       {!isReading && (
@@ -261,3 +312,4 @@ export default function App() {
     </div>
   );
 }
+

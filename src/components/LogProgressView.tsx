@@ -7,9 +7,10 @@ interface LogProgressViewProps {
   onBack: () => void;
   onSaved: () => void;
   onViewJournal?: (bookId: number) => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal }: LogProgressViewProps) {
+export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal, showToast }: LogProgressViewProps) {
   const [book, setBook] = useState<Book | null>(null);
   const [currentPage, setCurrentPage] = useState<string>('');
   const [loading, setLoading] = useState(false);
@@ -24,13 +25,25 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
         if (data.status === 'COMPLETED' || (data.current_page === data.total_pages && data.total_pages > 0)) {
           setShowSuccess(true);
         }
+      })
+      .catch(err => {
+        console.error("Fetch book error", err);
+        showToast?.("Failed to consult the archives", "error");
       });
   }, [bookId]);
 
   const handleSave = async (e: FormEvent) => {
     e.preventDefault();
     const targetPage = parseInt(currentPage);
-    if (isNaN(targetPage)) return;
+    if (isNaN(targetPage)) {
+      showToast?.("Please enter a valid page number", "error");
+      return;
+    }
+
+    if (book && (targetPage < 0 || targetPage > book.total_pages)) {
+      showToast?.(`Page must be between 0 and ${book.total_pages}`, "error");
+      return;
+    }
 
     setLoading(true);
     try {
@@ -40,18 +53,23 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
         body: JSON.stringify({ currentPage: targetPage })
       });
       if (res.ok) {
+        showToast?.("Progress archived", "success");
         if (book && targetPage === book.total_pages) {
           setShowSuccess(true);
         } else {
           onSaved();
         }
+      } else {
+        showToast?.("Failed to archive progress", "error");
       }
     } catch (e) {
       console.error("Log error", e);
+      showToast?.("Network error while archiving progress", "error");
     } finally {
       setLoading(false);
     }
   };
+
 
   const adjustPage = (amount: number) => {
     if (!book) return;

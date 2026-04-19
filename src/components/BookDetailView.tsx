@@ -8,9 +8,10 @@ interface BookDetailViewProps {
   onWriteReflection: (bookId: number) => void;
   onOpenReader: (bookId: number) => void;
   onDelete: () => void;
+  showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
-export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onOpenReader, onDelete }: BookDetailViewProps) {
+export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onOpenReader, onDelete, showToast }: BookDetailViewProps) {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [quickLogValue, setQuickLogValue] = useState<string>('');
   const [logging, setLogging] = useState(false);
@@ -25,6 +26,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       setBookDetail(data);
     } catch (e) {
       console.error("Fetch detail error:", e);
+      showToast?.("Failed to retrieve volume details", "error");
     }
   };
 
@@ -35,7 +37,10 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   const handleQuickLog = async (pages?: number) => {
     if (!bookDetail || logging) return;
     const pagesRead = pages !== undefined ? pages : parseInt(quickLogValue);
-    if (!pagesRead || isNaN(pagesRead)) return;
+    if (!pagesRead || isNaN(pagesRead) || pagesRead <= 0) {
+      if (!pages) showToast?.("Please enter a valid number of pages", "error");
+      return;
+    }
 
     setLogging(true);
     try {
@@ -45,11 +50,15 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         body: JSON.stringify({ pagesRead })
       });
       if (res.ok) {
+        showToast?.(`Logged ${pagesRead} pages`, "success");
         setQuickLogValue('');
         await fetchData();
+      } else {
+        showToast?.("Failed to log progress", "error");
       }
     } catch (e) {
       console.error("Quick log error", e);
+      showToast?.("Network error while logging progress", "error");
     } finally {
       setLogging(false);
     }
@@ -59,28 +68,41 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     setLogging(true);
     try {
       const res = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
-      if (res.ok) onDelete();
+      if (res.ok) {
+        showToast?.("Volume decommissioned from archives", "info");
+        onDelete();
+      } else {
+        showToast?.("Failed to decommission volume", "error");
+      }
     } catch (e) {
       console.error("Delete error", e);
+      showToast?.("Network error during decommissioning", "error");
     } finally {
       setLogging(false);
     }
   };
 
   const handleMarkAsCompleted = async () => {
+    if (logging) return;
+    setLogging(true);
     try {
-      // Direct update to status if needed, but user wants to go to reflection page immediately
-      // The reflection page usually handles the completion logic or the user does it there.
-      // We can also patch the book first to ensure it's marked
-      await fetch(`/api/books/${bookId}`, {
+      const res = await fetch(`/api/books/${bookId}`, {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ status: 'COMPLETED', current_page: bookDetail?.total_pages })
       });
-      onWriteReflection(bookId);
+      if (res.ok) {
+        showToast?.("Volume marked as Completed", "success");
+        onWriteReflection(bookId);
+      } else {
+        showToast?.("Failed to update status", "error");
+      }
     } catch (e) {
       console.error("Mark as completed error", e);
+      showToast?.("Network error while updating status", "error");
       onWriteReflection(bookId); // Fallback to navigation anyway
+    } finally {
+      setLogging(false);
     }
   };
 
@@ -91,6 +113,8 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
   const progress = Math.round(((bookDetail.current_page || 0) / bookDetail.total_pages) * 100);
   const pagesLeft = bookDetail.total_pages - (bookDetail.current_page || 0);
+  const statusLabel = bookDetail.status === 'COMPLETED' ? 'Completed' : (bookDetail.current_page > 0 ? 'Now Reading' : 'Up Next');
+
 
   return (
     <div className="max-w-4xl mx-auto pb-32">
@@ -112,7 +136,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
           <div className="mt-8 space-y-6">
             <div className="flex flex-wrap gap-2">
               <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{bookDetail.mode}</span>
-              <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{bookDetail.status.replace('_', ' ')}</span>
+              <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{statusLabel}</span>
             </div>
             <div className="pt-2">
               <p className="text-on-surface-variant text-sm leading-relaxed italic">
