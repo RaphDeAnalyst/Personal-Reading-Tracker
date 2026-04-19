@@ -194,9 +194,9 @@ async function startServer() {
   app.post("/api/books/:id/logs", (req, res) => {
     try {
       const { id } = req.params;
-      const { currentPage, current_page, pagesRead, date } = req.body;
+      const { currentPage, current_page, pagesRead, date, logId } = req.body;
       const effectiveCurrentPage = currentPage !== undefined ? currentPage : current_page;
-      const logDate = date || new Date().toISOString().split('T')[0];
+      const logDate = date || new Date().toISOString();
       
       const book = db.prepare("SELECT * FROM books WHERE id = ?").get(id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
@@ -207,7 +207,12 @@ async function startServer() {
 
       if (effectiveCurrentPage !== undefined) {
         newCurrentPage = Math.min(effectiveCurrentPage, book.total_pages);
-        actualPagesRead = Math.max(0, newCurrentPage - (book.current_page || 0));
+        // For digital reading, we might update the same log.
+        // If we are updating a log, we need the previous current_page from either the book or the log itself.
+        // But the server-side calculation of pagesRead based on book.current_page is only valid for NEW logs.
+        if (!logId) {
+          actualPagesRead = Math.max(0, newCurrentPage - (book.current_page || 0));
+        }
       } else {
         newCurrentPage = Math.min((book.current_page || 0) + (pagesRead || 0), book.total_pages);
         actualPagesRead = pagesRead || 0;
@@ -221,15 +226,34 @@ async function startServer() {
         newStatus = 'COMPLETED';
       }
 
+      let returnedLogId = logId;
+
       db.transaction(() => {
         db.prepare("UPDATE books SET current_page = ?, status = ? WHERE id = ?")
           .run(newCurrentPage, newStatus, id);
         
-        db.prepare("INSERT INTO logs (book_id, date, pages_read, current_page) VALUES (?, ?, ?, ?)")
-          .run(id, logDate, actualPagesRead, newCurrentPage);
+        if (logId) {
+          // Update existing log
+          // We need to re-calculate pages_read based on the start of the session
+          // but simpler is to let the client provide pagesRead if they are managing the session.
+          if (pagesRead !== undefined) {
+            db.prepare("UPDATE logs SET pages_read = ?, current_page = ? WHERE id = ?")
+              .run(pagesRead, newCurrentPage, logId);
+          } else if (effectiveCurrentPage !== undefined) {
+            // If only current_page is provided, we might not know how many pages were read in total
+            // unless we know the page when the log was first created.
+            // For now, let's assume if logId is provided, the client should ideally provide pagesRead too.
+            db.prepare("UPDATE logs SET current_page = ? WHERE id = ?")
+              .run(newCurrentPage, logId);
+          }
+        } else {
+          const info = db.prepare("INSERT INTO logs (book_id, date, pages_read, current_page) VALUES (?, ?, ?, ?)")
+            .run(id, logDate, actualPagesRead, newCurrentPage);
+          returnedLogId = info.lastInsertRowid;
+        }
       })();
 
-      res.json({ success: true, current_page: newCurrentPage, status: newStatus });
+      res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
     } catch (error) {
       console.error("Error logging progress:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -308,10 +332,12 @@ async function startServer() {
   // Dashboard stats
   app.get("/api/dashboard/status", (req, res) => {
     try {
-      const today = new Date().toISOString().split('T')[0];
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
       
       // Logged today?
-      const loggedTodayResult = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE date = ?").get(today) as any;
+      // Use strftime to compare only the date part of the ISO string
+      const loggedTodayResult = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(today) as any;
       const pagesReadToday = loggedTodayResult?.total || 0;
 
       // Current focus (most recently updated book)

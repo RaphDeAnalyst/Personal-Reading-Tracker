@@ -20,6 +20,12 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
   const [pdf, setPdf] = useState<any>(null);
   const [rendering, setRendering] = useState(false);
   const canvasRef = useRef<HTMLCanvasElement>(null);
+  const renderTaskRef = useRef<any>(null);
+
+  // Session Tracking
+  const [sessionStartPage, setSessionStartPage] = useState<number | null>(null);
+  const [currentLogId, setCurrentLogId] = useState<number | null>(null);
+  const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     const fetchBook = async () => {
@@ -28,7 +34,9 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
         if (!res.ok) throw new Error("Fetch failed");
         const data = await res.json();
         setBook(data);
-        setCurrentPage(Math.max(1, data.current_page || 1));
+        const startPage = Math.max(1, data.current_page || 1);
+        setCurrentPage(startPage);
+        setSessionStartPage(data.current_page || 0);
 
         if (data.pdf_file_path) {
           const loadingTask = pdfjsLib.getDocument(data.pdf_file_path);
@@ -45,17 +53,31 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
       }
     };
     fetchBook();
+
+    return () => {
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+    };
   }, [bookId]);
 
   useEffect(() => {
     if (pdf && currentPage > 0) {
       renderPage(currentPage);
-      saveProgress(currentPage);
+      // Debounce the save progress
+      if (syncTimerRef.current) clearTimeout(syncTimerRef.current);
+      syncTimerRef.current = setTimeout(() => {
+        saveProgress(currentPage);
+      }, 2000); // Wait 2 seconds of inactivity before syncing
     }
   }, [pdf, currentPage]);
 
   const renderPage = async (pageNum: number) => {
     if (!pdf || !canvasRef.current) return;
+    
+    // Cancel any ongoing render task
+    if (renderTaskRef.current) {
+      renderTaskRef.current.cancel();
+    }
+
     setRendering(true);
     try {
       const page = await pdf.getPage(pageNum);
@@ -73,8 +95,17 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
         viewport: viewport,
         canvas: canvas
       };
-      await page.render(renderContext).promise;
-    } catch (err) {
+
+      const renderTask = page.render(renderContext);
+      renderTaskRef.current = renderTask;
+      
+      await renderTask.promise;
+      renderTaskRef.current = null;
+    } catch (err: any) {
+      if (err.name === 'RenderingCancelledException' || err.message === 'Rendering cancelled, page 1') {
+        // Ignore cancellation errors
+        return;
+      }
       console.error("Render failed", err);
       showToast?.("Failed to render the current page", "error");
     } finally {
@@ -83,18 +114,31 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
   };
 
   const saveProgress = async (page: number) => {
-    if (!book) return;
+    if (!book || sessionStartPage === null) return;
+    
+    // Calculate total pages read in this session
+    const pagesReadInSession = Math.max(0, page - sessionStartPage);
+
     try {
       const res = await fetch(`/api/books/${bookId}/logs`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           currentPage: page,
-          pagesRead: 0, 
-          date: new Date().toISOString().split('T')[0]
+          pagesRead: pagesReadInSession,
+          logId: currentLogId || undefined,
+          date: new Date().toISOString() // Use full timestamp
         })
       });
-      if (!res.ok) console.warn("Background progress sync failed");
+      
+      if (res.ok) {
+        const data = await res.json();
+        if (data.logId && !currentLogId) {
+          setCurrentLogId(data.logId);
+        }
+      } else {
+        console.warn("Background progress sync failed");
+      }
     } catch (err) {
       console.error("Failed to sync progress", err);
     }

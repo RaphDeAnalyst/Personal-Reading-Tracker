@@ -209,7 +209,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
             </div>
 
             {/* Quick Log Section */}
-            {bookDetail.status !== 'COMPLETED' && (
+            {bookDetail.status !== 'COMPLETED' && bookDetail.mode === 'PHYSICAL' && (
               <div className="mt-10 pt-8 border-t border-outline-variant/20 relative z-10">
                 <h4 className="text-xs font-bold text-on-surface mb-6 uppercase tracking-widest">Quick Log</h4>
                 <div className="space-y-6">
@@ -264,20 +264,24 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 Mark as Completed
               </button>
             )}
-            <button 
-              onClick={() => onLogProgress(bookId)}
-              className="w-full flex items-center justify-center gap-2 px-6 py-4 border border-outline-variant/30 text-primary rounded-md font-semibold hover:bg-surface-container-low transition-colors"
-            >
-              <span className="material-symbols-outlined text-[20px]">history_edu</span>
-              {bookDetail.status === 'COMPLETED' ? 'View Reading History' : 'Detailed Log'}
-            </button>
+            {bookDetail.mode === 'PHYSICAL' && (
+              <button 
+                onClick={() => onLogProgress(bookId)}
+                className="w-full flex items-center justify-center gap-2 px-6 py-4 border border-outline-variant/30 text-primary rounded-md font-semibold hover:bg-surface-container-low transition-colors"
+              >
+                <span className="material-symbols-outlined text-[20px]">history_edu</span>
+                {bookDetail.status === 'COMPLETED' ? 'View Reading History' : 'Detailed Log'}
+              </button>
+            )}
           </div>
 
           {/* Reading History (Timeline) */}
           <div className="space-y-8 pt-6">
             <div className="flex items-center justify-between">
               <h3 className="font-headline text-2xl italic font-semibold">Reading History</h3>
-              <button onClick={() => onLogProgress(bookId)} className="text-primary text-sm font-bold hover:underline">View All</button>
+              {bookDetail.mode === 'PHYSICAL' && (
+                <button onClick={() => onLogProgress(bookId)} className="text-primary text-sm font-bold hover:underline">View All</button>
+              )}
             </div>
             
             <div className="relative pl-8 space-y-12">
@@ -290,7 +294,14 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                   <div className="flex flex-col md:flex-row md:justify-between md:items-baseline gap-2">
                     <div>
                       <span className="text-xs font-bold text-on-surface uppercase tracking-widest block mb-1">
-                        {new Date(log.date).toLocaleDateString(undefined, { day: '2-digit', month: 'short', year: 'numeric' })}
+                        {new Date(log.date).toLocaleString(undefined, { 
+                          month: 'short', 
+                          day: '2-digit', 
+                          year: 'numeric',
+                          hour: '2-digit',
+                          minute: '2-digit',
+                          hour12: true
+                        }).replace(',', ' —')}
                         {index === 0 && <span className="ml-2 text-tertiary normal-case italic font-headline">Recent</span>}
                       </span>
                       <p className="font-medium text-on-surface">“Gained insights up to page {log.current_page}”</p>

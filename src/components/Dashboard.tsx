@@ -4,7 +4,7 @@ import { Book } from '../types';
 interface DashboardProps {
   onSelectBook: (id: number) => void;
   onAddBook: () => void;
-  onLogCurrent: () => void;
+  onLogCurrent: (book: Book) => void;
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
@@ -146,7 +146,12 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             Today: <span className="text-on-surface font-semibold">{stats.pagesReadToday > 0 ? `${stats.pagesReadToday} pages read` : 'No reading logged today'}</span>
           </span>
         </div>
-        <button onClick={onLogCurrent} className="font-label text-[10px] uppercase tracking-widest text-primary font-bold hover:underline transition-all">Log Now</button>
+        <button 
+          onClick={() => currentBook && onLogCurrent(currentBook)} 
+          className="font-label text-[10px] uppercase tracking-widest text-primary font-bold hover:underline transition-all"
+        >
+          Log Now
+        </button>
       </section>
 
       {/* Current Focus Section - Hide when searching */}
@@ -197,7 +202,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                     </div>
                   </div>
                   <button 
-                    onClick={() => onLogCurrent()}
+                    onClick={() => currentBook && onLogCurrent(currentBook)}
                     className="w-full px-8 py-5 bg-primary text-on-primary rounded-xl font-label font-semibold text-sm tracking-[0.15em] uppercase hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-4 group"
                   >
                     <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">menu_book</span>
