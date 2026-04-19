@@ -1,0 +1,22 @@
+model: ollama/mistral
+
+auto-commits: true
+dirty-commits: false
+
+read:
+  - AGENTS.md
+  - README.md
+  - package.json
+  - tsconfig.json
+
+  # Entry points (critical for architecture understanding)
+  - index.*
+  - main.*
+  - app.*
+
+  # Core source code
+  - src/
+
+  # Config layer
+  - config/
+  - .env.example

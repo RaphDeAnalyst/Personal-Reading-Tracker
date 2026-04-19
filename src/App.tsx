@@ -14,6 +14,7 @@ import SuccessView from './components/SuccessView';
 import ReflectionIndexView from './components/ReflectionIndexView';
 import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
+import InsightsView from './components/InsightsView';
 import { Book } from './types';
 
 type View = 
@@ -24,6 +25,7 @@ type View =
   | { type: 'reflection-index' }
   | { type: 'log-progress'; bookId: number }
   | { type: 'reader'; bookId: number }
+  | { type: 'insights' }
   | { type: 'success'; bookId: number };
 
 export interface Toast {
@@ -39,6 +41,9 @@ export default function App() {
   const [showAlert, setShowAlert] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
+  const [fontPreference, setFontPreference] = useState<'serif' | 'sans'>(() => {
+    return (localStorage.getItem('reading-font-pref') as 'serif' | 'sans') || 'serif';
+  });
 
   const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
     const id = Date.now();
@@ -46,6 +51,13 @@ export default function App() {
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
+  };
+
+  const toggleFont = () => {
+    const next = fontPreference === 'serif' ? 'sans' : 'serif';
+    setFontPreference(next);
+    localStorage.setItem('reading-font-pref', next);
+    showToast(`Font preference updated to ${next}`, "info");
   };
 
   const checkStatus = async () => {
@@ -126,6 +138,8 @@ export default function App() {
             onSelectBook={(id) => setView({ type: 'reflection', bookId: id })}
           />
         );
+      case 'insights':
+        return <InsightsView showToast={showToast} fontPreference={fontPreference} onToggleFont={toggleFont} />;
       case 'log-progress':
         return (
           <LogProgressView 
@@ -159,7 +173,7 @@ export default function App() {
   const isReading = view.type === 'reader';
 
   return (
-    <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container ${isReading ? 'overflow-hidden' : ''}`}>
+    <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container font-pref-${fontPreference} ${isReading ? 'overflow-hidden' : ''}`}>
       {!isReading && (
         <>
           <Sidebar 
@@ -210,6 +224,7 @@ export default function App() {
                 else if (view.type === 'reflection') setView({ type: 'reflection-index' });
                 else if (view.type === 'reflection-index') setView({ type: 'dashboard' });
                 else if (view.type === 'log-progress') setView({ type: 'detail', bookId: (view as any).bookId });
+                else if (view.type === 'insights') setView({ type: 'dashboard' });
                 else setView({ type: 'dashboard' });
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
@@ -231,14 +246,14 @@ export default function App() {
         >
           The Archivist
         </h1>
-        <div className="w-8 h-8 rounded-full overflow-hidden bg-surface-container-high border border-outline-variant/20">
-          <img 
-            alt="Profile" 
-            className="w-full h-full object-cover" 
-            src="https://picsum.photos/seed/archivist/100/100"
-            referrerPolicy="no-referrer"
-          />
-        </div>
+        <button 
+          onClick={() => setView({ type: 'insights' })}
+          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+        >
+          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'insights' ? "'FILL' 1" : "'FILL' 0" }}>
+            analytics
+          </span>
+        </button>
       </header>
         </>
       )}

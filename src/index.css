@@ -96,4 +96,12 @@
   .btn-active-scale {
     @apply active:scale-95 transition-transform duration-200 ease-out;
   }
+
+  .font-pref-serif .serif-text {
+    @apply font-headline italic;
+  }
+
+  .font-pref-sans .serif-text {
+    @apply font-body font-bold not-italic;
+  }
 }

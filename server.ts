@@ -362,6 +362,98 @@ async function startServer() {
     }
   });
 
+  // Insights Dashboard
+  app.get("/api/insights", (req, res) => {
+    try {
+      // 1. Total books completed
+      const completedBooksCount = db.prepare("SELECT COUNT(*) as count FROM books WHERE status = 'COMPLETED'").get().count;
+
+      // 2. Total pages read
+      const totalPagesRead = db.prepare("SELECT SUM(pages_read) as total FROM logs").get().total || 0;
+
+      // 3. Total reflections
+      const totalReflections = db.prepare("SELECT COUNT(*) as count FROM reflections").get().count;
+
+      // 4. Reading streak
+      const logDates = db.prepare("SELECT DISTINCT strftime('%Y-%m-%d', date) as day FROM logs ORDER BY day DESC").all() as { day: string }[];
+      
+      let streak = 0;
+      if (logDates.length > 0) {
+        const today = new Date();
+        today.setHours(0,0,0,0);
+        const yesterday = new Date(today);
+        yesterday.setDate(yesterday.getDate() - 1);
+
+        const latestLogDate = new Date(logDates[0].day);
+        latestLogDate.setHours(0,0,0,0);
+
+        // If the latest log is today or yesterday, we might have a streak
+        if (latestLogDate.getTime() === today.getTime() || latestLogDate.getTime() === yesterday.getTime()) {
+          streak = 1;
+          let currentCheck = latestLogDate;
+          for (let i = 1; i < logDates.length; i++) {
+            const nextLogDate = new Date(logDates[i].day);
+            nextLogDate.setHours(0,0,0,0);
+            
+            const expectedDate = new Date(currentCheck);
+            expectedDate.setDate(expectedDate.getDate() - 1);
+
+            if (nextLogDate.getTime() === expectedDate.getTime()) {
+              streak++;
+              currentCheck = nextLogDate;
+            } else {
+              break;
+            }
+          }
+        }
+      }
+
+      // 5. Average pages per day (of days active)
+      const activeDaysCount = logDates.length || 1;
+      const averagePagesPerDay = Math.round(totalPagesRead / activeDaysCount);
+
+      // 6. Last 7 days trend
+      const last7Days = [];
+      for (let i = 6; i >= 0; i--) {
+        const d = new Date();
+        d.setDate(d.getDate() - i);
+        
+        // Construct YYYY-MM-DD in local time
+        const year = d.getFullYear();
+        const month = String(d.getMonth() + 1).padStart(2, '0');
+        const day = String(d.getDate()).padStart(2, '0');
+        const dateStr = `${year}-${month}-${day}`;
+
+        const pagesRead = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(dateStr).total || 0;
+        last7Days.push({ day: d.toLocaleDateString(undefined, { weekday: 'short' }), pages: pagesRead });
+      }
+
+      // 7. Recent reflections preview
+      const recentReflections = db.prepare(`
+        SELECT r.content, r.rating, b.title, b.author 
+        FROM reflections r 
+        JOIN books b ON r.book_id = b.id 
+        ORDER BY r.id DESC 
+        LIMIT 3
+      `).all();
+
+      res.json({
+        stats: {
+          completedBooks: completedBooksCount,
+          totalPagesRead,
+          totalReflections,
+          streak,
+          averagePagesPerDay
+        },
+        trend: last7Days,
+        recentReflections
+      });
+    } catch (error) {
+      console.error("Insights Error:", error);
+      res.status(500).json({ error: "Failed to gather insights" });
+    }
+  });
+
   // 404 catch-all for API ONLY
   app.use("/api/*", (req, res) => {
     console.warn(`Attempt to access non-existent chronicle: ${req.method} ${req.url}`);
