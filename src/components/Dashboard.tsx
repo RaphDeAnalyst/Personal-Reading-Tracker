@@ -8,6 +8,47 @@ interface DashboardProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
+interface BookCardProps {
+  book: Book;
+  onSelect: (id: number) => void;
+  key?: any;
+}
+
+function BookCard({ book, onSelect }: BookCardProps) {
+  const bookProgress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
+  const statusLabel = book.status === 'COMPLETED' ? 'Completed' : (book.current_page > 0 ? 'Now Reading' : 'Up Next');
+
+  return (
+    <article className="group cursor-pointer" onClick={() => onSelect(book.id)}>
+      <div className="flex gap-5 items-start">
+        <div className="w-24 h-36 flex-shrink-0 bg-surface-container-low overflow-hidden rounded shadow-[2px_6px_16px_rgba(48,51,49,0.06)] transition-transform duration-500 group-hover:-translate-y-1">
+           {book.cover_url ? (
+              <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+            ) : (
+              <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
+                <span className="material-symbols-outlined text-sm">book</span>
+              </div>
+            )}
+        </div>
+        <div className="flex flex-col h-full py-0.5 min-w-0">
+          <div className="flex items-center gap-1.5 mb-2">
+            <span className={`inline-block w-1.5 h-1.5 rounded-full ${book.status === 'COMPLETED' ? 'bg-outline' : book.status === 'IN_PROGRESS' && book.current_page > 0 ? 'bg-tertiary shadow-[0_0_4px_rgba(89,99,66,0.3)]' : 'bg-outline-variant/40'}`}></span>
+            <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{statusLabel}</span>
+          </div>
+          <h3 className="serif-text text-xl text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors truncate">{book.title}</h3>
+          <p className="font-label text-[11px] text-on-surface-variant mb-4 italic truncate">{book.author}</p>
+          <div className="mt-auto">
+            <div className="h-[4px] w-full bg-surface-container-highest rounded-full overflow-hidden">
+              <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-700" style={{ width: `${bookProgress}%` }}></div>
+            </div>
+            <p className="font-label text-[10px] text-on-surface-variant mt-2 font-medium">{bookProgress}% completed</p>
+          </div>
+        </div>
+      </div>
+    </article>
+  );
+}
+
 export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showToast }: DashboardProps) {
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
@@ -279,38 +320,4 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
   );
 }
 
-function BookCard({ book, onSelect }: { book: Book, onSelect: (id: number) => void }) {
-  const bookProgress = Math.round(((book.current_page || 0) / book.total_pages) * 100);
-  const statusLabel = book.status === 'COMPLETED' ? 'Completed' : (book.current_page > 0 ? 'Now Reading' : 'Up Next');
-
-  return (
-    <article className="group cursor-pointer" onClick={() => onSelect(book.id)}>
-      <div className="flex gap-5 items-start">
-        <div className="w-24 h-36 flex-shrink-0 bg-surface-container-low overflow-hidden rounded shadow-[2px_6px_16px_rgba(48,51,49,0.06)] transition-transform duration-500 group-hover:-translate-y-1">
-           {book.cover_url ? (
-              <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-            ) : (
-              <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                <span className="material-symbols-outlined text-sm">book</span>
-              </div>
-            )}
-        </div>
-        <div className="flex flex-col h-full py-0.5 min-w-0">
-          <div className="flex items-center gap-1.5 mb-2">
-            <span className={`inline-block w-1.5 h-1.5 rounded-full ${book.status === 'COMPLETED' ? 'bg-outline' : book.status === 'IN_PROGRESS' && book.current_page > 0 ? 'bg-tertiary shadow-[0_0_4px_rgba(89,99,66,0.3)]' : 'bg-outline-variant/40'}`}></span>
-            <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{statusLabel}</span>
-          </div>
-          <h3 className="serif-text text-xl text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors truncate">{book.title}</h3>
-          <p className="font-label text-[11px] text-on-surface-variant mb-4 italic truncate">{book.author}</p>
-          <div className="mt-auto">
-            <div className="h-[4px] w-full bg-surface-container-highest rounded-full overflow-hidden">
-              <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-700" style={{ width: `${bookProgress}%` }}></div>
-            </div>
-            <p className="font-label text-[10px] text-on-surface-variant mt-2 font-medium">{bookProgress}% completed</p>
-          </div>
-        </div>
-      </div>
-    </article>
-  );
-}
 
