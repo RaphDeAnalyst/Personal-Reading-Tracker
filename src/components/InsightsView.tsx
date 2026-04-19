@@ -180,10 +180,10 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
               {/* Momentum Line (Dashed) */}
               {dailyAverageThreshold > 0 && (
                 <div 
-                  className="absolute left-11 right-0 border-t-2 border-dashed border-tertiary z-10 group"
+                  className="absolute left-11 right-0 border-t-2 border-dashed border-tertiary z-10 pointer-events-none"
                   style={{ bottom: `${Math.max((dailyAverageThreshold / maxPages) * 208 + 48, 56)}px` }}
                 >
-                  <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest opacity-100 shadow-sm">
+                  <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
                     Goal: {dailyAverageThreshold}p
                   </div>
                 </div>
