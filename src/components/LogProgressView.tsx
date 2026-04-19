@@ -101,8 +101,8 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
             </div>
           )}
         </div>
-        <h2 className="serif-text text-xl font-medium text-on-surface">{book.title}</h2>
-        <p className="font-label text-xs text-on-surface-variant/70 uppercase tracking-widest mt-1">Currently at page {book.current_page || 0}</p>
+        <h2 className="serif-text text-xl font-medium text-on-surface break-words px-4">{book.title}</h2>
+        <p className="font-label text-xs text-on-surface-variant/70 uppercase tracking-widest mt-1 break-words px-4">{book.author}</p>
       </div>
 
       {/* Frictionless Input Area */}
@@ -111,7 +111,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
           <div className="text-center">
             <label className="block text-[10px] uppercase tracking-[0.3em] font-bold text-on-surface-variant/60 mb-8">Enter Current Page</label>
             <div className="flex flex-col items-center gap-6">
-              <div className="relative inline-flex items-center justify-center">
+              <div className="relative inline-flex items-center justify-center max-w-full">
                 <input 
                   autoFocus
                   type="number"
@@ -120,7 +120,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
                   required
                   min={0}
                   max={book.total_pages}
-                  className="bg-transparent border-none p-0 focus:ring-0 serif-text text-7xl font-medium text-center placeholder:text-surface-container-highest w-40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="bg-transparent border-none p-0 focus:ring-0 serif-text text-6xl sm:text-7xl font-medium text-center placeholder:text-surface-container-highest w-32 sm:w-40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder={(book.current_page || 0).toString()}
                   value={currentPage}
                   onChange={e => setCurrentPage(e.target.value)}

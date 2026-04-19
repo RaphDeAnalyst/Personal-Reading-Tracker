@@ -95,14 +95,14 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           </div>
         </div>
         <div>
-          <h2 className="font-headline text-5xl md:text-6xl text-primary leading-tight">
+          <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
             Current Reflections
           </h2>
           <p className="mt-2 text-[11px] uppercase tracking-[0.2em] font-bold font-label text-outline italic">
             Keep it short and practical
           </p>
         </div>
-        <p className="font-headline italic text-xl text-on-surface-variant max-w-xl border-l border-outline-variant/30 pl-6 py-1">
+        <p className="font-headline italic text-lg sm:text-xl text-on-surface-variant max-w-xl border-l border-outline-variant/30 pl-6 py-1 break-words hyphens-auto">
           Synthesizing the ideas of "{bookDetail.title}"
         </p>
       </header>

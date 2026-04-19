@@ -81,9 +81,9 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
                   </div>
                 )}
               </div>
-              <div className="space-y-1 py-1">
-                <h3 className="font-headline text-xl text-on-surface italic font-semibold">{bookDetail.title}</h3>
-                <p className="text-sm text-on-surface-variant/80">{bookDetail.total_pages} pages archived</p>
+              <div className="space-y-1 py-1 min-w-0">
+                <h3 className="font-headline text-xl text-on-surface italic font-semibold line-clamp-2 break-words leading-tight">{bookDetail.title}</h3>
+                <p className="text-sm text-on-surface-variant/80 break-words">{bookDetail.total_pages} pages archived</p>
                 {/* Progress Filament */}
                 <div className="pt-5">
                   <div className="w-32 h-[2px] bg-surface-container-highest relative">

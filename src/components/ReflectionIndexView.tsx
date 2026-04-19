@@ -45,7 +45,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
           <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
           <span className="text-[10px] uppercase tracking-widest font-bold font-label">The Archivist</span>
         </div>
-        <h2 className="font-headline text-5xl md:text-6xl text-primary leading-tight">
+        <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
           Reflection Journal
         </h2>
 
@@ -123,10 +123,10 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
                   whileHover={{ y: -2 }}
                   whileTap={{ scale: 0.98 }}
                   onClick={() => onSelectBook(book.id)}
-                  className="w-full bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl p-5 text-left flex items-center gap-6 hover:bg-surface-container transition-all group"
+                  className="w-full bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl p-4 sm:p-5 text-left flex items-center gap-4 sm:gap-6 hover:bg-surface-container transition-all group overflow-hidden"
                 >
                   {/* Book Cover Small */}
-                  <div className="w-12 h-18 bg-surface-container-highest rounded shadow-sm flex-shrink-0 overflow-hidden group-hover:shadow-md transition-shadow">
+                  <div className="w-10 h-14 sm:w-12 sm:h-18 bg-surface-container-highest rounded shadow-sm flex-shrink-0 overflow-hidden group-hover:shadow-md transition-shadow">
                     {book.cover_url ? (
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
@@ -137,20 +137,20 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
                   </div>
 
                   {/* Info */}
-                  <div className="flex-1 min-w-0">
-                    <h3 className="font-headline text-lg text-on-surface truncate pr-4 group-hover:italic transition-all">
+                  <div className="flex-1 min-w-0 pr-2">
+                    <h3 className="font-headline text-base sm:text-lg text-on-surface line-clamp-2 break-words group-hover:italic transition-all leading-tight">
                       {book.title}
                     </h3>
-                    <div className="flex items-center gap-3 mt-1">
-                      <span className="text-[10px] text-on-surface-variant/60 font-bold uppercase tracking-widest italic opacity-70">
+                    <div className="flex items-center gap-3 mt-1 min-w-0">
+                      <span className="text-[9px] sm:text-[10px] text-on-surface-variant/60 font-bold uppercase tracking-widest italic opacity-70 break-words line-clamp-1">
                         {book.author || 'Anonymous'}
                       </span>
                     </div>
                   </div>
 
                   {/* Action Reveal */}
-                  <div className="flex items-center gap-3 text-outline-variant group-hover:text-primary transition-colors">
-                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 0" }}>chevron_right</span>
+                  <div className="flex items-center text-outline-variant group-hover:text-primary transition-colors shrink-0">
+                    <span className="material-symbols-outlined text-xl sm:text-2xl" style={{ fontVariationSettings: "'FILL' 0" }}>chevron_right</span>
                   </div>
                 </motion.button>
               ))}

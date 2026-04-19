@@ -179,11 +179,11 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         </aside>
 
         {/* Book Content & Tracking */}
-        <section className="flex-1 space-y-10 w-full">
+        <section className="flex-1 space-y-10 w-full min-w-0">
           {/* Title & Header */}
           <header className="space-y-2">
-            <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-on-surface leading-tight font-semibold">{bookDetail.title}</h2>
-            <p className="text-lg sm:text-xl text-on-surface-variant font-headline italic">by {bookDetail.author}</p>
+            <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-on-surface leading-tight font-semibold break-words hyphens-auto">{bookDetail.title}</h2>
+            <p className="text-base sm:text-lg md:text-xl text-on-surface-variant font-headline italic break-words">by {bookDetail.author}</p>
           </header>
 
           {/* Progress Section */}

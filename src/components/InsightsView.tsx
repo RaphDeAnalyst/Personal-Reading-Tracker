@@ -57,10 +57,10 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
   return (
     <div className="max-w-4xl mx-auto pb-24">
-      <header className="mb-12 flex justify-between items-start">
-        <div>
-          <h2 className="serif-text text-4xl text-on-surface mb-2">My Journey</h2>
-          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest">Insights & Growth</p>
+      <header className="mb-12 flex flex-col sm:flex-row justify-between items-start gap-6">
+        <div className="min-w-0">
+          <h2 className="serif-text text-3xl sm:text-4xl text-on-surface mb-2 break-words">My Journey</h2>
+          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest break-words">Insights & Growth</p>
         </div>
         <button 
           onClick={onToggleTheme}
@@ -77,7 +77,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       </header>
 
       {/* Core Stats Grid */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 mb-12">
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
         <StatCard 
           label="Books Completed" 
           value={data.stats.completedBooks} 
@@ -236,13 +236,13 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
 function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
   return (
-    <div className="bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col gap-4">
-      <div className={`w-10 h-10 rounded-full bg-surface-container-high flex items-center justify-center ${color}`}>
-        <span className="material-symbols-outlined text-[20px]">{icon}</span>
+    <div className="bg-surface-container-low p-4 sm:p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col gap-4 min-w-0">
+      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-container-high flex items-center justify-center ${color}`}>
+        <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{icon}</span>
       </div>
-      <div>
-        <div className="serif-text text-2xl text-on-surface font-medium">{value}</div>
-        <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">{label}</p>
+      <div className="min-w-0">
+        <div className="serif-text text-xl sm:text-2xl text-on-surface font-medium break-words leading-tight">{value}</div>
+        <p className="font-label text-[9px] sm:text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mt-1 break-words">{label}</p>
       </div>
     </div>
   );

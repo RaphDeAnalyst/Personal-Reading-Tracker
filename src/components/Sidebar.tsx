@@ -12,7 +12,6 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView }: Si
     { id: 'dashboard', label: 'Library', icon: 'import_contacts' },
     { id: 'add', label: 'Add New Book', icon: 'add_circle' },
     { id: 'reflection-index', label: 'Reflections', icon: 'auto_stories' },
-    { id: 'settings', label: 'Sanctum Settings', icon: 'settings', disabled: true },
   ];
 
   return (

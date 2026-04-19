@@ -35,8 +35,8 @@ function BookCard({ book, onSelect }: BookCardProps) {
             <span className={`inline-block w-1.5 h-1.5 rounded-full ${book.status === 'COMPLETED' ? 'bg-outline' : book.status === 'IN_PROGRESS' && book.current_page > 0 ? 'bg-tertiary shadow-[0_0_4px_rgba(89,99,66,0.3)]' : 'bg-outline-variant/40'}`}></span>
             <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{statusLabel}</span>
           </div>
-          <h3 className="serif-text text-xl text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors truncate">{book.title}</h3>
-          <p className="font-label text-[11px] text-on-surface-variant mb-4 italic truncate">{book.author}</p>
+          <h3 className="serif-text text-xl text-on-surface leading-tight mb-1 group-hover:text-primary transition-colors line-clamp-2 break-words">{book.title}</h3>
+          <p className="font-label text-[11px] text-on-surface-variant mb-4 italic line-clamp-2 break-words">{book.author}</p>
           <div className="mt-auto">
             <div className="h-[4px] w-full bg-surface-container-highest rounded-full overflow-hidden">
               <div className="h-full bg-tertiary rounded-full progress-bar-fill transition-all duration-700" style={{ width: `${bookProgress}%` }}></div>
@@ -170,7 +170,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
               <div className="absolute top-0 right-0 w-32 h-32 bg-primary/5 rounded-full -mr-16 -mt-16 blur-3xl"></div>
               <div 
                 onClick={() => onSelectBook(currentBook.id)}
-                className="w-56 h-80 flex-shrink-0 bg-surface-container-highest overflow-hidden rounded-lg shadow-[0_20px_50px_rgba(48,51,49,0.18)] z-10 cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
+                className="w-48 h-72 sm:w-56 sm:h-80 flex-shrink-0 bg-surface-container-highest overflow-hidden rounded-lg shadow-[0_20px_50px_rgba(48,51,49,0.18)] z-10 cursor-pointer transition-transform duration-500 group-hover:scale-[1.02]"
               >
                  {currentBook.cover_url ? (
                     <img src={currentBook.cover_url} alt={currentBook.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
@@ -180,13 +180,13 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                     </div>
                   )}
               </div>
-              <div className="flex flex-col flex-grow w-full z-10">
+              <div className="flex flex-col flex-grow w-full z-10 min-w-0">
                 <div className="flex items-center gap-2 mb-4">
                   <span className="inline-block w-2.5 h-2.5 rounded-full bg-tertiary shadow-[0_0_8px_rgba(89,99,66,0.4)]"></span>
                   <span className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-on-surface-variant">Focusing on</span>
                 </div>
-                <h2 className="serif-text text-5xl text-on-surface mb-3 leading-tight">{currentBook.title}</h2>
-                <p className="font-label text-lg text-on-surface-variant mb-10 italic">{currentBook.author}</p>
+                <h2 className="serif-text text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-on-surface mb-3 leading-tight break-words">{currentBook.title}</h2>
+                <p className="font-label text-base sm:text-lg text-on-surface-variant mb-10 italic break-words">{currentBook.author}</p>
                 <div className="space-y-8">
                   <div>
                     <div className="flex justify-between items-end mb-4">
