@@ -105,6 +105,19 @@ export default function PDFReader({ bookId, onBack, onFinish }: PDFReaderProps) 
     }
   };
 
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (e.key === 'ArrowRight') {
+        nextPage();
+      } else if (e.key === 'ArrowLeft') {
+        prevPage();
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [pdf, currentPage, nextPage, prevPage]);
+
   if (loading) {
     return (
       <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center p-10">
