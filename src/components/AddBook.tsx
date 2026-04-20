@@ -2,6 +2,7 @@ import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Tag } from '../types';
+import TagSelector from './TagSelector';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -15,6 +16,7 @@ interface AddBookProps {
 export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
   const [loading, setLoading] = useState(false);
   const [extracting, setExtracting] = useState(false);
+  const [lookingUp, setLookingUp] = useState(false);
   const [formData, setFormData] = useState({
     title: '',
     author: '',
@@ -26,20 +28,46 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
     publisher: '',
     publication_year: ''
   });
+
+  // Fetch all tags
+  const handleISBNLookup = async () => {
+    if (!formData.isbn || formData.isbn.length < 10) {
+      showToast?.("Please enter a valid ISBN", "error");
+      return;
+    }
+
+    setLookingUp(true);
+    try {
+      const res = await fetch(`/api/books/lookup?isbn=${encodeURIComponent(formData.isbn)}`);
+      const data = await res.json();
+
+      if (res.ok) {
+        setFormData(prev => ({
+          ...prev,
+          title: data.title || prev.title,
+          author: data.author || prev.author,
+          total_pages: data.total_pages ? data.total_pages.toString() : prev.total_pages,
+          publisher: data.publisher || prev.publisher,
+          publication_year: data.publication_year ? data.publication_year.toString() : prev.publication_year,
+          description: data.description || prev.description,
+          cover_url: data.cover_url || prev.cover_url,
+          isbn: data.isbn || prev.isbn
+        }));
+        showToast?.("Archival data retrieved", "success");
+      } else {
+        showToast?.(data.error || "Volume not found in external archives", "error");
+      }
+    } catch (e) {
+      console.error("ISBN Lookup failed:", e);
+      showToast?.("Network error while consulting archives", "error");
+    } finally {
+      setLookingUp(false);
+    }
+  };
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
-  const [newTagName, setNewTagName] = useState('');
-
-  // Fetch all tags
-  useEffect(() => {
-    fetch('/api/tags')
-      .then(res => res.json())
-      .then(data => setAllTags(data))
-      .catch(e => console.error("Failed to fetch tags", e));
-  }, []);
 
   // Handle preview logic
   useEffect(() => {
@@ -60,26 +88,6 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
         ? prev.filter(id => id !== tagId)
         : [...prev, tagId]
     );
-  };
-
-  const handleCreateTag = async () => {
-    if (!newTagName.trim()) return;
-    try {
-      const res = await fetch('/api/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTagName.trim() })
-      });
-      if (res.ok) {
-        const newTag = await res.json();
-        setAllTags(prev => [...prev, newTag]);
-        setSelectedTagIds(prev => [...prev, newTag.id]);
-        setNewTagName('');
-        showToast?.("Tag created", "success");
-      }
-    } catch (e) {
-      console.error("Create tag error:", e);
-    }
   };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
@@ -384,14 +392,28 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="isbn">
                   ISBN
                 </label>
-                <input 
-                  className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
-                  id="isbn" 
-                  placeholder="978-0143126393" 
-                  type="text"
-                  value={formData.isbn}
-                  onChange={e => setFormData({ ...formData, isbn: e.target.value })}
-                />
+                <div className="flex gap-3">
+                  <input 
+                    className="form-input-line flex-1 text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
+                    id="isbn" 
+                    placeholder="978-0143126393" 
+                    type="text"
+                    value={formData.isbn}
+                    onChange={e => setFormData({ ...formData, isbn: e.target.value })}
+                    onKeyDown={e => e.key === 'Enter' && (e.preventDefault(), handleISBNLookup())}
+                  />
+                  <button
+                    type="button"
+                    onClick={handleISBNLookup}
+                    disabled={lookingUp || loading}
+                    className="px-3 py-1 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                  >
+                    <span className={`material-symbols-outlined text-sm ${lookingUp ? 'animate-spin' : ''}`}>
+                      {lookingUp ? 'sync' : 'search'}
+                    </span>
+                    {lookingUp ? '...' : 'Lookup'}
+                  </button>
+                </div>
               </div>
               <div className="group">
                 <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="publisher">
@@ -478,44 +500,11 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
               <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
                 Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
               </label>
-              <div className="space-y-3">
-                <div className="flex flex-wrap gap-2">
-                  {allTags.map(tag => (
-                    <button
-                      key={tag.id}
-                      type="button"
-                      onClick={() => handleToggleTag(tag.id)}
-                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
-                        selectedTagIds.includes(tag.id)
-                          ? 'bg-primary text-on-primary'
-                          : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
-                      }`}
-                    >
-                      {tag.name}
-                    </button>
-                  ))}
-                  {allTags.length === 0 && (
-                    <span className="text-[10px] text-outline-variant italic">No tags yet</span>
-                  )}
-                </div>
-                <div className="flex gap-2">
-                  <input
-                    type="text"
-                    value={newTagName}
-                    onChange={(e) => setNewTagName(e.target.value)}
-                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateTag())}
-                    placeholder="Create new tag..."
-                    className="flex-1 bg-surface border border-outline-variant/30 rounded px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                  />
-                  <button
-                    type="button"
-                    onClick={handleCreateTag}
-                    className="px-4 py-2 bg-primary text-on-primary rounded text-[10px] font-bold hover:bg-primary-dim transition-colors"
-                  >
-                    Add
-                  </button>
-                </div>
-              </div>
+              <TagSelector 
+                selectedTagIds={selectedTagIds}
+                onToggleTag={handleToggleTag}
+                showToast={showToast}
+              />
             </div>
 
             {/* CTA Section */}

@@ -8,9 +8,53 @@ interface InsightsData {
     totalReflections: number;
     streak: number;
     averagePagesPerDay: number;
+    consistencyScore: number;
+    consistencyLevel: string;
   };
-  trend: { day: string; pages: number; fullDate: string }[];
+  trend: { day: string; pages: number; fullDate: string; dayOfWeek: number }[];
   recentReflections: { content: string; rating: number; title: string; author: string }[];
+  genreDistribution: { name: string; count: number }[];
+  authorDistribution: { author: string; count: number }[];
+}
+
+function DistributionChart({ title, data, icon, total }: { title: string; data: { name: string; count: number }[]; icon: string, total: number }) {
+  const maxCount = Math.max(...data.map(d => d.count), 1);
+
+  return (
+    <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 shadow-sm flex-1">
+      <h3 className="font-headline italic text-xl flex items-center gap-3 mb-8">
+        <span className="material-symbols-outlined text-tertiary">{icon}</span>
+        {title}
+      </h3>
+      <div className="space-y-6">
+        {data.length > 0 ? data.map((item, i) => {
+          const percentage = Math.round((item.count / total) * 100);
+          const barWidth = Math.max((item.count / maxCount) * 100, 4);
+
+          return (
+            <div key={i} className="space-y-2">
+              <div className="flex justify-between items-end">
+                <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface truncate pr-4">{item.name}</span>
+                <span className="font-label text-[9px] text-on-surface-variant font-bold">{item.count} Volumes</span>
+              </div>
+              <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
+                <motion.div 
+                  initial={{ width: 0 }}
+                  animate={{ width: `${barWidth}%` }}
+                  transition={{ duration: 1, delay: i * 0.1 }}
+                  className="h-full bg-primary rounded-full relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10"></div>
+                </motion.div>
+              </div>
+            </div>
+          );
+        }) : (
+          <p className="text-center py-8 text-sm text-on-surface-variant italic font-headline opacity-60">Not enough data to map distribution.</p>
+        )}
+      </div>
+    </section>
+  );
 }
 
 interface InsightsViewProps {
@@ -66,9 +110,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const dailyAverageThreshold = data.stats.averagePagesPerDay;
   const peakPages = Math.max(...last7Days.map(t => t.pages));
   
-  const daysWithReading = data.trend.filter(t => t.pages > 0).length;
-  const consistencyQuotient = Math.round((daysWithReading / 30) * 100);
-
   // --- Chronicle Wave Logic ---
   const chartHeight = 120;
   const chartWidth = 800; // Large enough for smooth resolution
@@ -258,9 +299,16 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 </h3>
                 <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Momentum Terrain</p>
               </div>
-              <div className="text-right">
-                <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency Quotient</span>
-                <span className="serif-text text-xl text-tertiary font-medium">{consistencyQuotient}%</span>
+              <div className="flex items-center gap-4 bg-surface-container-high/50 px-5 py-2.5 rounded-xl border border-outline-variant/5">
+                <div className="text-right">
+                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency Status</span>
+                  <span className="serif-text text-xl text-primary font-medium">{data.stats.consistencyLevel}</span>
+                </div>
+                <div className="w-[1px] h-8 bg-outline-variant/20 mx-1"></div>
+                <div className="text-right">
+                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Quotient</span>
+                  <span className="serif-text text-xl text-tertiary font-medium">{data.stats.consistencyScore}%</span>
+                </div>
               </div>
             </div>
 
@@ -362,6 +410,22 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
               </div>
             </div>
           </section>
+
+          {/* Distribution Insights */}
+          <div className="flex flex-col md:flex-row gap-6">
+            <DistributionChart 
+              title="Genre Topography" 
+              data={data.genreDistribution} 
+              icon="category" 
+              total={data.stats.completedBooks || 1}
+            />
+            <DistributionChart 
+              title="Author Influence" 
+              data={data.authorDistribution.map(a => ({ name: a.author, count: a.count }))} 
+              icon="pen_size_2" 
+              total={data.stats.completedBooks || 1}
+            />
+          </div>
 
           {/* Recent Reflections */}
           <section className="space-y-6">

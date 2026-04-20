@@ -8,12 +8,60 @@ interface ReflectionViewProps {
   showToast?: (message: string, type: 'success' | 'error' | 'info') => void;
 }
 
+const PROMPT_SETS = [
+  {
+    id: 'standard',
+    name: 'Standard',
+    prompts: [
+      'What did I learn?',
+      'What will I apply?',
+      'What did I disagree with?'
+    ],
+    placeholders: [
+      'Example: Discipline is more reliable than motivation',
+      'Example: I will read 10 pages every morning',
+      'Example: The author overgeneralized habits'
+    ]
+  },
+  {
+    id: 'philosophical',
+    name: 'Philosophical',
+    prompts: [
+      'What truth was revealed?',
+      'How does this change my worldview?',
+      'What remains unanswered?'
+    ],
+    placeholders: [
+      'Example: The nature of suffering is attachment',
+      'Example: It shifted my focus toward internal peace',
+      'Example: The source of true altruism'
+    ]
+  },
+  {
+    id: 'practical',
+    name: 'Practical',
+    prompts: [
+      'What is the key takeaway?',
+      'What is my next immediate action?',
+      'What resource do I need next?'
+    ],
+    placeholders: [
+      'Example: Compounding interest applies to skills too',
+      'Example: Audit my current calendar',
+      'Example: A deep dive into technical debt management'
+    ]
+  }
+];
+
 export default function ReflectionView({ bookId, onBack, onComplete, showToast }: ReflectionViewProps) {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [learning, setLearning] = useState('');
   const [application, setApplication] = useState('');
   const [disagreement, setDisagreement] = useState('');
   const [loading, setLoading] = useState(false);
+  const [activeSetIndex, setActiveSetIndex] = useState(0);
+
+  const activeSet = PROMPT_SETS[activeSetIndex];
 
   useEffect(() => {
     fetch(`/api/books/${bookId}`)
@@ -98,9 +146,26 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
             Current Reflections
           </h2>
-          <p className="mt-2 text-[11px] uppercase tracking-[0.2em] font-bold font-label text-outline italic">
-            Keep it short and practical
-          </p>
+          <div className="mt-4 flex flex-wrap gap-4 items-center">
+            <span className="text-[9px] uppercase tracking-[0.2em] font-bold font-label text-outline italic">
+              Lens:
+            </span>
+            <div className="flex gap-2">
+              {PROMPT_SETS.map((set, index) => (
+                <button
+                  key={set.id}
+                  onClick={() => setActiveSetIndex(index)}
+                  className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                    activeSetIndex === index 
+                      ? 'bg-primary text-on-primary shadow-sm' 
+                      : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
+                  }`}
+                >
+                  {set.name}
+                </button>
+              ))}
+            </div>
+          </div>
         </div>
         <p className="font-headline italic text-lg sm:text-xl text-on-surface-variant max-w-xl border-l border-outline-variant/30 pl-6 py-1 break-words hyphens-auto">
           Synthesizing the ideas of "{bookDetail.title}"
@@ -114,12 +179,12 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           <div className="flex flex-col gap-6">
             <label className="font-headline text-2xl text-primary flex items-center gap-4">
               <span className="text-tertiary opacity-40 italic">01.</span>
-              What did I learn?
+              {activeSet.prompts[0]}
             </label>
             <div className="relative px-1">
               <textarea 
                 className="w-full bg-transparent border-none focus:ring-0 p-0 text-xl font-headline leading-relaxed text-on-surface placeholder:opacity-50 min-h-[140px] resize-none" 
-                placeholder="Example: Discipline is more reliable than motivation"
+                placeholder={activeSet.placeholders[0]}
                 value={learning}
                 onChange={e => setLearning(e.target.value)}
               />
@@ -133,12 +198,12 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           <div className="flex flex-col gap-6">
             <label className="font-headline text-2xl text-primary flex items-center gap-4">
               <span className="text-tertiary opacity-40 italic">02.</span>
-              What will I apply?
+              {activeSet.prompts[1]}
             </label>
             <div className="relative px-1">
               <textarea 
                 className="w-full bg-transparent border-none focus:ring-0 p-0 text-xl font-headline leading-relaxed text-on-surface placeholder:opacity-50 min-h-[140px] resize-none" 
-                placeholder="Example: I will read 10 pages every morning"
+                placeholder={activeSet.placeholders[1]}
                 value={application}
                 onChange={e => setApplication(e.target.value)}
               />
@@ -152,12 +217,12 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           <div className="flex flex-col gap-6">
             <label className="font-headline text-2xl text-primary flex items-center gap-4">
               <span className="text-tertiary opacity-40 italic">03.</span>
-              What did I disagree with?
+              {activeSet.prompts[2]}
             </label>
             <div className="relative px-1">
               <textarea 
                 className="w-full bg-transparent border-none focus:ring-0 p-0 text-xl font-headline leading-relaxed text-on-surface placeholder:opacity-50 min-h-[140px] resize-none" 
-                placeholder="Example: The author overgeneralized habits"
+                placeholder={activeSet.placeholders[2]}
                 value={disagreement}
                 onChange={e => setDisagreement(e.target.value)}
               />

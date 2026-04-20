@@ -46,6 +46,13 @@ export interface Reflection {
   disagreement?: string;
 }
 
+export interface ReadingGoal {
+  id: number;
+  year: number;
+  target_value: number;
+  created_at: string;
+}
+
 export interface BookDetail extends Book {
   logs: Log[];
   reflection: Reflection | null;

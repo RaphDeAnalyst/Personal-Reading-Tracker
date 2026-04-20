@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Book, Log, Reflection, BookDetail, Tag } from '../types';
+import TagSelector from './TagSelector';
 
 interface BookDetailViewProps {
   bookId: number;
@@ -17,19 +18,16 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   const [logging, setLogging] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
-  const [allTags, setAllTags] = useState<Tag[]>([]);
-  const [bookTags, setBookTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [showTagEditor, setShowTagEditor] = useState(false);
-  const [newTagName, setNewTagName] = useState('');
 
-  const fetchTags = async () => {
+  const fetchBookTags = async () => {
     try {
-      const [allRes, bookRes] = await Promise.all([
-        fetch('/api/tags'),
-        fetch(`/api/books/${bookId}/tags`)
-      ]);
-      if (allRes.ok) setAllTags(await allRes.json());
-      if (bookRes.ok) setBookTags(await bookRes.json());
+      const res = await fetch(`/api/books/${bookId}/tags`);
+      if (res.ok) {
+        const tags: Tag[] = await res.json();
+        setSelectedTagIds(tags.map(t => t.id));
+      }
     } catch (e) {
       console.error("Fetch tags error:", e);
     }
@@ -49,128 +47,38 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
   useEffect(() => {
     fetchData();
-    fetchTags();
+    fetchBookTags();
   }, [bookId]);
 
-  const handleQuickLog = async (pages?: number) => {
-    if (!bookDetail || logging) return;
-    const pagesRead = pages !== undefined ? pages : parseInt(quickLogValue);
-    if (!pagesRead || isNaN(pagesRead) || pagesRead <= 0) {
-      if (!pages) showToast?.("Please enter a valid number of pages", "error");
-      return;
-    }
-
-    setLogging(true);
-    try {
-      const res = await fetch(`/api/books/${bookId}/logs`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ pagesRead })
-      });
-      if (res.ok) {
-        showToast?.(`Logged ${pagesRead} pages`, "success");
-        setQuickLogValue('');
-        await fetchData();
-      } else {
-        showToast?.("Failed to log progress", "error");
-      }
-    } catch (e) {
-      console.error("Quick log error", e);
-      showToast?.("Network error while logging progress", "error");
-    } finally {
-      setLogging(false);
-    }
-  };
-
-  const handleDelete = async () => {
-    setLogging(true);
-    try {
-      const res = await fetch(`/api/books/${bookId}`, { method: 'DELETE' });
-      if (res.ok) {
-        showToast?.("Volume decommissioned from archives", "info");
-        onDelete();
-      } else {
-        showToast?.("Failed to decommission volume", "error");
-      }
-    } catch (e) {
-      console.error("Delete error", e);
-      showToast?.("Network error during decommissioning", "error");
-    } finally {
-      setLogging(false);
-    }
-  };
-
-  const handleMarkAsCompleted = async () => {
-    if (logging) return;
-    setLogging(true);
-    try {
-      const res = await fetch(`/api/books/${bookId}`, {
-        method: 'PATCH',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ status: 'COMPLETED', current_page: bookDetail?.total_pages })
-      });
-      if (res.ok) {
-        showToast?.("Volume marked as Completed", "success");
-        onWriteReflection(bookId);
-      } else {
-        showToast?.("Failed to update status", "error");
-      }
-    } catch (e) {
-      console.error("Mark as completed error", e);
-      showToast?.("Network error while updating status", "error");
-      onWriteReflection(bookId); // Fallback to navigation anyway
-    } finally {
-      setLogging(false);
-    }
-  };
-
   const handleToggleTag = (tagId: number) => {
-    setBookTags(prev => 
-      prev.some(t => t.id === tagId)
-        ? prev.filter(t => t.id !== tagId)
-        : [...prev, allTags.find(t => t.id === tagId)!]
+    setSelectedTagIds(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
     );
   };
 
   const handleSaveTags = async () => {
+    if (logging) return;
+    setLogging(true);
     try {
       const res = await fetch(`/api/books/${bookId}/tags`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ tagIds: bookTags.map(t => t.id) })
+        body: JSON.stringify({ tagIds: selectedTagIds })
       });
       if (res.ok) {
         showToast?.("Tags updated", "success");
         setShowTagEditor(false);
       } else {
-        showToast?.("Failed to update tags", "error");
+        const data = await res.json();
+        showToast?.(data.error || "Failed to update tags", "error");
       }
     } catch (e) {
       console.error("Save tags error:", e);
       showToast?.("Network error while saving tags", "error");
-    }
-  };
-
-  const handleCreateTag = async () => {
-    if (!newTagName.trim()) return;
-    try {
-      const res = await fetch('/api/tags', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ name: newTagName.trim() })
-      });
-      if (res.ok) {
-        const newTag = await res.json();
-        setAllTags(prev => [...prev, newTag]);
-        setBookTags(prev => [...prev, newTag]);
-        setNewTagName('');
-        showToast?.("Tag created", "success");
-      } else {
-        showToast?.("Failed to create tag", "error");
-      }
-    } catch (e) {
-      console.error("Create tag error:", e);
-      showToast?.("Network error while creating tag", "error");
+    } finally {
+      setLogging(false);
     }
   };
 
@@ -212,66 +120,37 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
               <div className="flex items-center justify-between mb-2">
                 <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tags</span>
                 <button 
-                  onClick={() => setShowTagEditor(!showTagEditor)}
-                  className="text-[10px] text-primary hover:underline font-bold"
+                  onClick={() => {
+                    if (showTagEditor) {
+                      handleSaveTags();
+                    } else {
+                      setShowTagEditor(true);
+                    }
+                  }}
+                  disabled={logging}
+                  className="text-[10px] text-primary hover:underline font-bold disabled:opacity-50"
                 >
-                  {showTagEditor ? 'Cancel' : 'Edit'}
+                  {showTagEditor ? (logging ? 'Saving...' : 'Save') : 'Edit'}
                 </button>
               </div>
               
-              {showTagEditor ? (
-                <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
-                  <div className="flex flex-wrap gap-2">
-                    {allTags.map(tag => (
-                      <button
-                        key={tag.id}
-                        onClick={() => handleToggleTag(tag.id)}
-                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${
-                          bookTags.some(t => t.id === tag.id)
-                            ? 'bg-primary text-on-primary'
-                            : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
-                        }`}
-                      >
-                        {tag.name}
-                      </button>
-                    ))}
-                    {allTags.length === 0 && (
-                      <span className="text-[10px] text-outline-variant italic">No tags yet</span>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={newTagName}
-                      onChange={(e) => setNewTagName(e.target.value)}
-                      onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
-                      placeholder="New tag name"
-                      className="flex-1 bg-white border border-outline-variant/30 rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
-                    />
-                    <button
-                      onClick={handleCreateTag}
-                      className="px-3 py-1.5 bg-primary text-on-primary rounded text-[10px] font-bold hover:bg-primary-dim transition-colors"
-                    >
-                      Add
-                    </button>
-                  </div>
-                  <button
-                    onClick={handleSaveTags}
-                    className="w-full py-2 bg-on-surface text-surface rounded font-bold text-xs hover:bg-primary transition-colors"
-                  >
-                    Save Tags
-                  </button>
-                </div>
-              ) : (
-                <div className="flex flex-wrap gap-2">
-                  {bookTags.length > 0 ? bookTags.map(tag => (
-                    <span key={tag.id} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
-                      {tag.name}
-                    </span>
-                  )) : (
-                    <span className="text-[10px] text-outline-variant italic">No tags assigned</span>
-                  )}
-                </div>
+              <TagSelector 
+                selectedTagIds={selectedTagIds}
+                onToggleTag={handleToggleTag}
+                showToast={showToast}
+                isEditing={showTagEditor}
+              />
+              
+              {showTagEditor && (
+                <button
+                  onClick={() => {
+                    setShowTagEditor(false);
+                    fetchBookTags(); // Revert changes
+                  }}
+                  className="w-full mt-2 text-[10px] text-outline-variant hover:text-on-surface transition-colors font-bold uppercase tracking-widest"
+                >
+                  Cancel
+                </button>
               )}
             </div>
 

@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book } from '../types';
+import { Book, ReadingGoal } from '../types';
 
 interface DashboardProps {
   onSelectBook: (id: number) => void;
@@ -12,6 +12,113 @@ interface BookCardProps {
   book: Book;
   onSelect: (id: number) => void;
   key?: any;
+}
+
+function ReadingGoalCard({ completedCount, showToast }: { completedCount: number, showToast?: (message: string, type: 'success' | 'error' | 'info') => void }) {
+  const currentYear = new Date().getFullYear();
+  const [goal, setGoal] = useState<ReadingGoal | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editValue, setEditValue] = useState('');
+  const [loading, setLoading] = useState(false);
+
+  useEffect(() => {
+    fetch(`/api/goals/${currentYear}`)
+      .then(res => res.json())
+      .then(data => {
+        setGoal(data);
+        setEditValue(data.target_value?.toString() || '0');
+      })
+      .catch(err => console.error("Failed to fetch goal:", err));
+  }, [currentYear]);
+
+  const handleSave = async () => {
+    const value = parseInt(editValue);
+    if (isNaN(value) || value < 0) {
+      showToast?.("Invalid goal value", "error");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      const res = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: currentYear, target_value: value })
+      });
+      if (res.ok) {
+        const updatedGoal = await res.json();
+        setGoal(updatedGoal);
+        setIsEditing(false);
+        showToast?.(`Annual goal updated to ${value} books`, "success");
+      }
+    } catch (err) {
+      console.error("Failed to save goal:", err);
+      showToast?.("Network error while saving goal", "error");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const target = goal?.target_value || 0;
+  const progress = target > 0 ? Math.min(100, Math.round((completedCount / target) * 100)) : 0;
+
+  return (
+    <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-full md:w-64 relative group border border-outline-variant/10">
+      <div className="flex flex-col items-center w-full">
+        <span className="font-label text-[10px] uppercase tracking-widest text-outline-variant font-bold mb-4">{currentYear} Reading Goal</span>
+        
+        {isEditing ? (
+          <div className="flex flex-col items-center gap-4 w-full animate-in fade-in zoom-in-95 duration-200">
+            <input 
+              type="number"
+              value={editValue}
+              onChange={(e) => setEditValue(e.target.value)}
+              className="w-20 text-center bg-surface border-b-2 border-primary outline-none serif-text text-3xl py-1 text-on-surface"
+              autoFocus
+            />
+            <div className="flex gap-4">
+              <button 
+                onClick={handleSave} 
+                disabled={loading}
+                className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
+              >
+                {loading ? '...' : 'Save'}
+              </button>
+              <button 
+                onClick={() => setIsEditing(false)} 
+                className="text-[10px] font-bold uppercase tracking-widest text-outline-variant hover:text-on-surface"
+              >
+                Cancel
+              </button>
+            </div>
+          </div>
+        ) : (
+          <>
+            <div className="flex items-baseline gap-1 mb-6">
+              <span className="serif-text text-5xl text-primary">{completedCount}</span>
+              <span className="serif-text text-xl text-outline-variant italic">/</span>
+              <span className="serif-text text-2xl text-on-surface-variant">{target}</span>
+            </div>
+            
+            <div className="w-full space-y-3">
+              <div className="h-1.5 w-full bg-surface-container-highest rounded-full overflow-hidden">
+                <div className="h-full bg-tertiary transition-all duration-1000" style={{ width: `${progress}%` }}></div>
+              </div>
+              <div className="flex justify-between items-center">
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">{progress}% complete</span>
+                <button 
+                  onClick={() => setIsEditing(true)}
+                  className="text-[10px] text-primary opacity-0 group-hover:opacity-100 transition-opacity font-bold uppercase tracking-widest"
+                >
+                  Set Goal
+                </button>
+              </div>
+            </div>
+          </>
+        )}
+      </div>
+    </div>
+  );
 }
 
 function BookCard({ book, onSelect }: BookCardProps) {
@@ -300,24 +407,25 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
 
       {/* Asymmetric Detail Section - Only show when not searching */}
       {!isSearching && (
-        <section className="mt-24 bg-surface-container-low p-10 md:p-12 rounded-2xl flex flex-col md:flex-row gap-12 items-center">
-          <div className="w-full md:w-1/2">
+        <section className="mt-24 bg-surface-container-low p-10 md:p-12 rounded-2xl flex flex-col lg:flex-row gap-12 items-center">
+          <div className="w-full lg:w-1/2">
             <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Reading Stats</span>
             <h3 className="serif-text text-3xl mb-4 leading-tight">Your focused sanctuary.</h3>
             <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Record your thoughts as you progress through your library. Wisdom is meant to be archived.</p>
             <button onClick={() => setActiveTab('completed')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Completed →</button>
           </div>
-          <div className="w-full md:w-1/2 flex justify-center">
-            <div className="grid grid-cols-2 gap-6">
-              <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32">
+          <div className="w-full lg:w-1/2 flex flex-col md:flex-row gap-6 items-center justify-center lg:justify-end">
+            <div className="grid grid-cols-2 gap-6 h-fit">
+              <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32 border border-outline-variant/10">
                 <span className="serif-text text-3xl text-primary">{stats.totalBooks}</span>
                 <span className="font-label text-[9px] uppercase tracking-widest text-outline mt-1">Books</span>
               </div>
-              <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32 mt-6">
+              <div className="bg-surface-container-lowest p-6 flex flex-col items-center justify-center rounded-xl shadow-sm w-32 h-32 mt-6 border border-outline-variant/10">
                 <span className="serif-text text-3xl text-primary">{stats.completedBooks}</span>
                 <span className="font-label text-[9px] uppercase tracking-widest text-outline mt-1">Finished</span>
               </div>
             </div>
+            <ReadingGoalCard completedCount={stats.completedBooks} showToast={showToast} />
           </div>
         </section>
       )}

@@ -1,10 +1,13 @@
 import express from "express";
 import { createServer as createViteServer } from "vite";
-import path from "path";
 import fs from "fs";
+import path from "path";
 import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import multer from "multer";
+import dotenv from "dotenv";
+
+dotenv.config();
 
 console.log("--- The Archivist Server: Sequential Startup Initiated ---");
 
@@ -12,6 +15,9 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 let db: any;
+
+const PORT = process.env.PORT || 3000;
+const DB_PATH = process.env.DATABASE_URL || "reading_tracker.db";
 
 // Ensure uploads directory exists
 const uploadsDir = path.join(process.cwd(), "uploads");
@@ -35,11 +41,10 @@ const upload = multer({ storage: storage });
 
 async function startServer() {
   try {
-    console.log("Initializing database connection...");
-    db = new Database("reading_tracker.db");
+    console.log(`Initializing database connection at ${DB_PATH}...`);
+    db = new Database(DB_PATH);
     
     const app = express();
-    const PORT = 3000;
 
     console.log("Running database migrations...");
     // Initialize Database
@@ -133,6 +138,13 @@ async function startServer() {
         FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
         FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
       );
+
+      CREATE TABLE IF NOT EXISTS reading_goals (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER UNIQUE NOT NULL,
+        target_value INTEGER NOT NULL,
+        created_at DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
     `);
 
   app.use(express.json());
@@ -142,6 +154,84 @@ async function startServer() {
   app.use((req, res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
     next();
+  });
+
+  // ISBN Lookup API (Phase 2 - Automated Metadata)
+  app.get("/api/books/lookup", async (req, res) => {
+    try {
+      const { isbn } = req.query;
+      if (!isbn || typeof isbn !== 'string') {
+        return res.status(400).json({ error: "ISBN parameter is required" });
+      }
+
+      // Clean ISBN (remove dashes/spaces)
+      const cleanIsbn = isbn.replace(/[-\s]/g, "");
+      if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
+        return res.status(400).json({ error: "Invalid ISBN format. Must be 10 or 13 digits." });
+      }
+
+      console.log(`Archivist: Consulting external scrolls for ISBN ${cleanIsbn}...`);
+      
+      const response = await fetch(`https://openlibrary.org/api/books?bibkeys=ISBN:${cleanIsbn}&format=json&jscmd=data`);
+      const data = await response.json() as any;
+      const bookKey = `ISBN:${cleanIsbn}`;
+
+      if (!data[bookKey]) {
+        return res.status(404).json({ error: "Volume not found in the Open Library archives" });
+      }
+
+      const info = data[bookKey];
+      
+      // Map Open Library data to our schema
+      const mappedData = {
+        title: info.title || "",
+        author: info.authors ? info.authors.map((a: any) => a.name).join(", ") : "",
+        publisher: info.publishers ? info.publishers.map((p: any) => p.name).join(", ") : "",
+        publication_year: info.publish_date ? parseInt(info.publish_date.match(/\d{4}/)?.[0] || "") : null,
+        total_pages: info.number_of_pages || info.pagination || null,
+        description: info.notes || (info.excerpts ? info.excerpts[0].text : ""),
+        cover_url: info.cover ? (info.cover.large || info.cover.medium || info.cover.small) : null,
+        isbn: cleanIsbn
+      };
+
+      res.json(mappedData);
+    } catch (error) {
+      console.error("Lookup Error:", error);
+      res.status(500).json({ error: "Failed to connect to external metadata service" });
+    }
+  });
+
+  // Goals API (Phase 2 - Basic Reading Goals)
+  app.get("/api/goals/:year", (req, res) => {
+    try {
+      const { year } = req.params;
+      const goal = db.prepare("SELECT * FROM reading_goals WHERE year = ?").get(year);
+      res.json(goal || { year: parseInt(year), target_value: 0 });
+    } catch (error) {
+      console.error("Error fetching reading goal:", error);
+      res.status(500).json({ error: "Failed to fetch reading goal" });
+    }
+  });
+
+  app.post("/api/goals", (req, res) => {
+    try {
+      const { year, target_value } = req.body;
+      if (!year || target_value === undefined) {
+        return res.status(400).json({ error: "Year and target_value are required" });
+      }
+
+      db.prepare(`
+        INSERT INTO reading_goals (year, target_value)
+        VALUES (?, ?)
+        ON CONFLICT(year) DO UPDATE SET target_value = excluded.target_value
+      `).run(year, target_value);
+
+      const goal = db.prepare("SELECT * FROM reading_goals WHERE year = ?").get(year);
+      res.json(goal);
+    } catch (error) {
+      console.error("Error updating reading goal:", error);
+      res.status(500).json({ error: "Internal server error while updating goal" });
+    }
   });
 
   // Get all books
@@ -181,38 +271,53 @@ async function startServer() {
       res.json(tags);
     } catch (error) {
       console.error("Error fetching tags:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Failed to fetch tags from archive" });
     }
   });
 
   app.post("/api/tags", (req, res) => {
     try {
       const { name } = req.body;
-      if (!name || !name.trim()) {
-        return res.status(400).json({ error: "Tag name is required" });
+      if (!name || typeof name !== 'string' || !name.trim()) {
+        return res.status(400).json({ error: "A valid tag name is required" });
       }
-      const result = db.prepare("INSERT INTO tags (name) VALUES (?)").run(name.trim());
+      
+      const trimmedName = name.trim();
+      
+      // Check for existing tag to provide better error
+      const existing = db.prepare("SELECT id FROM tags WHERE name = ?").get(trimmedName);
+      if (existing) {
+        return res.status(409).json({ error: "This tag already exists in the archive" });
+      }
+
+      const result = db.prepare("INSERT INTO tags (name) VALUES (?)").run(trimmedName);
       const newTag = db.prepare("SELECT * FROM tags WHERE id = ?").get(result.lastInsertRowid);
-      res.json(newTag);
+      res.status(201).json(newTag);
     } catch (error) {
       console.error("Error creating tag:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error while creating tag" });
     }
   });
 
   // Get tags for a specific book
   app.get("/api/books/:id/tags", (req, res) => {
     try {
+      const { id } = req.params;
+      const bookExists = db.prepare("SELECT id FROM books WHERE id = ?").get(id);
+      if (!bookExists) {
+        return res.status(404).json({ error: "Volume not found" });
+      }
+
       const tags = db.prepare(`
         SELECT t.* FROM tags t
         JOIN book_tags bt ON t.id = bt.tag_id
         WHERE bt.book_id = ?
         ORDER BY t.name
-      `).all(req.params.id);
+      `).all(id);
       res.json(tags);
     } catch (error) {
       console.error("Error fetching book tags:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error while fetching volume tags" });
     }
   });
 
@@ -221,12 +326,21 @@ async function startServer() {
     try {
       const { tagIds } = req.body;
       const bookId = req.params.id;
+
+      if (!Array.isArray(tagIds)) {
+        return res.status(400).json({ error: "tagIds must be an array" });
+      }
+      
+      const bookExists = db.prepare("SELECT id FROM books WHERE id = ?").get(bookId);
+      if (!bookExists) {
+        return res.status(404).json({ error: "Volume not found" });
+      }
       
       db.transaction(() => {
         // Remove existing tags
         db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(bookId);
         // Add new tags
-        if (Array.isArray(tagIds)) {
+        if (tagIds.length > 0) {
           const insert = db.prepare("INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)");
           for (const tagId of tagIds) {
             insert.run(bookId, tagId);
@@ -234,10 +348,10 @@ async function startServer() {
         }
       })();
       
-      res.json({ success: true });
+      res.json({ success: true, message: "Tags updated successfully" });
     } catch (error) {
       console.error("Error updating book tags:", error);
-      res.status(500).json({ error: "Internal server error" });
+      res.status(500).json({ error: "Internal server error while updating volume tags" });
     }
   });
 
@@ -542,16 +656,60 @@ async function startServer() {
         LIMIT 3
       `).all();
 
+      // 8. Genre Distribution (Tags)
+      const genreDistribution = db.prepare(`
+        SELECT t.name, COUNT(bt.book_id) as count
+        FROM tags t
+        JOIN book_tags bt ON t.id = bt.tag_id
+        GROUP BY t.id
+        ORDER BY count DESC
+        LIMIT 6
+      `).all();
+
+      // 9. Author Distribution
+      const authorDistribution = db.prepare(`
+        SELECT author, COUNT(*) as count
+        FROM books
+        WHERE author IS NOT NULL AND author != ''
+        GROUP BY author
+        ORDER BY count DESC
+        LIMIT 5
+      `).all();
+
+      // 10. Reading Consistency Score (Last 30 days)
+      const thirtyDaysAgo = new Date();
+      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+      const dateLimit = thirtyDaysAgo.toISOString().split('T')[0];
+
+      const activeDaysResult = db.prepare(`
+        SELECT COUNT(DISTINCT strftime('%Y-%m-%d', date)) as activeDays
+        FROM logs
+        WHERE strftime('%Y-%m-%d', date) >= ?
+      `).get(dateLimit) as { activeDays: number };
+
+      const activeDays = activeDaysResult?.activeDays || 0;
+      const consistencyScore = Math.round((activeDays / 30) * 100);
+
+      let consistencyLevel = "Wandering";
+      if (consistencyScore > 80) consistencyLevel = "Unyielding";
+      else if (consistencyScore > 60) consistencyLevel = "Dedicated";
+      else if (consistencyScore > 40) consistencyLevel = "Steady";
+      else if (consistencyScore > 20) consistencyLevel = "Casual";
+
       res.json({
         stats: {
           completedBooks: completedBooksCount,
           totalPagesRead,
           totalReflections,
           streak,
-          averagePagesPerDay
+          averagePagesPerDay,
+          consistencyScore,
+          consistencyLevel
         },
         trend: last35Days,
-        recentReflections
+        recentReflections,
+        genreDistribution,
+        authorDistribution
       });
     } catch (error) {
       console.error("Insights Error:", error);
