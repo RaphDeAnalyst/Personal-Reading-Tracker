@@ -1,6 +1,7 @@
 import { useState, FormEvent, ChangeEvent, useEffect } from 'react';
 import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
+import { Tag } from '../types';
 
 // Configure PDF.js worker
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -19,11 +20,26 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
     author: '',
     total_pages: '',
     mode: 'PHYSICAL',
-    cover_url: ''
+    cover_url: '',
+    isbn: '',
+    description: '',
+    publisher: '',
+    publication_year: ''
   });
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [selectedPDF, setSelectedPDF] = useState<File | null>(null);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
+  const [newTagName, setNewTagName] = useState('');
+
+  // Fetch all tags
+  useEffect(() => {
+    fetch('/api/tags')
+      .then(res => res.json())
+      .then(data => setAllTags(data))
+      .catch(e => console.error("Failed to fetch tags", e));
+  }, []);
 
   // Handle preview logic
   useEffect(() => {
@@ -37,6 +53,34 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
       setPreviewUrl(null);
     }
   }, [selectedFile, formData.cover_url]);
+
+  const handleToggleTag = (tagId: number) => {
+    setSelectedTagIds(prev =>
+      prev.includes(tagId)
+        ? prev.filter(id => id !== tagId)
+        : [...prev, tagId]
+    );
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTagName.trim() })
+      });
+      if (res.ok) {
+        const newTag = await res.json();
+        setAllTags(prev => [...prev, newTag]);
+        setSelectedTagIds(prev => [...prev, newTag.id]);
+        setNewTagName('');
+        showToast?.("Tag created", "success");
+      }
+    } catch (e) {
+      console.error("Create tag error:", e);
+    }
+  };
 
   const handleFileChange = (e: ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -125,6 +169,10 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
       data.append('author', formData.author);
       data.append('total_pages', formData.total_pages);
       data.append('mode', formData.mode);
+      data.append('isbn', formData.isbn);
+      data.append('description', formData.description);
+      data.append('publisher', formData.publisher);
+      data.append('publication_year', formData.publication_year);
       
       if (selectedFile) {
         data.append('cover', selectedFile);
@@ -142,6 +190,15 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
       });
 
       if (res.ok) {
+        const book = await res.json();
+        // Save tags if any selected
+        if (selectedTagIds.length > 0) {
+          await fetch(`/api/books/${book.id}/tags`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ tagIds: selectedTagIds })
+          });
+        }
         showToast?.(`${formData.title} archived successfully`, "success");
         onAdded();
       } else {
@@ -321,6 +378,64 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
               />
             </div>
 
+            {/* New Metadata Fields: ISBN, Publisher, Year */}
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+              <div className="group">
+                <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="isbn">
+                  ISBN
+                </label>
+                <input 
+                  className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
+                  id="isbn" 
+                  placeholder="978-0143126393" 
+                  type="text"
+                  value={formData.isbn}
+                  onChange={e => setFormData({ ...formData, isbn: e.target.value })}
+                />
+              </div>
+              <div className="group">
+                <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="publisher">
+                  Publisher
+                </label>
+                <input 
+                  className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
+                  id="publisher" 
+                  placeholder="Penguin Books" 
+                  type="text"
+                  value={formData.publisher}
+                  onChange={e => setFormData({ ...formData, publisher: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="group">
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="year">
+                Publication Year
+              </label>
+              <input 
+                className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
+                id="year" 
+                placeholder="2001" 
+                type="number"
+                value={formData.publication_year}
+                onChange={e => setFormData({ ...formData, publication_year: e.target.value })}
+              />
+            </div>
+
+            {/* Field: Description */}
+            <div className="group">
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="description">
+                Description
+              </label>
+              <textarea 
+                className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body focus:outline-none focus:ring-1 focus:ring-primary transition-all min-h-[120px]" 
+                id="description" 
+                placeholder="Brief summary or thoughts on this volume..." 
+                value={formData.description}
+                onChange={e => setFormData({ ...formData, description: e.target.value })}
+              />
+            </div>
+
             {/* Optional Cover (Only for Physical or if manual adjust is needed) */}
             <div className="group">
               <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
@@ -355,6 +470,51 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     }}
                   />
                 )}
+              </div>
+            </div>
+
+            {/* Tags Section */}
+            <div className="group">
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
+                Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
+              </label>
+              <div className="space-y-3">
+                <div className="flex flex-wrap gap-2">
+                  {allTags.map(tag => (
+                    <button
+                      key={tag.id}
+                      type="button"
+                      onClick={() => handleToggleTag(tag.id)}
+                      className={`px-3 py-1.5 rounded-full text-[10px] font-bold transition-all ${
+                        selectedTagIds.includes(tag.id)
+                          ? 'bg-primary text-on-primary'
+                          : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
+                      }`}
+                    >
+                      {tag.name}
+                    </button>
+                  ))}
+                  {allTags.length === 0 && (
+                    <span className="text-[10px] text-outline-variant italic">No tags yet</span>
+                  )}
+                </div>
+                <div className="flex gap-2">
+                  <input
+                    type="text"
+                    value={newTagName}
+                    onChange={(e) => setNewTagName(e.target.value)}
+                    onKeyDown={(e) => e.key === 'Enter' && (e.preventDefault(), handleCreateTag())}
+                    placeholder="Create new tag..."
+                    className="flex-1 bg-surface border border-outline-variant/30 rounded px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                  />
+                  <button
+                    type="button"
+                    onClick={handleCreateTag}
+                    className="px-4 py-2 bg-primary text-on-primary rounded text-[10px] font-bold hover:bg-primary-dim transition-colors"
+                  >
+                    Add
+                  </button>
+                </div>
               </div>
             </div>
 

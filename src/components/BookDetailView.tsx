@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, Log, Reflection, BookDetail } from '../types';
+import { Book, Log, Reflection, BookDetail, Tag } from '../types';
 
 interface BookDetailViewProps {
   bookId: number;
@@ -17,6 +17,23 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   const [logging, setLogging] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [bookTags, setBookTags] = useState<Tag[]>([]);
+  const [showTagEditor, setShowTagEditor] = useState(false);
+  const [newTagName, setNewTagName] = useState('');
+
+  const fetchTags = async () => {
+    try {
+      const [allRes, bookRes] = await Promise.all([
+        fetch('/api/tags'),
+        fetch(`/api/books/${bookId}/tags`)
+      ]);
+      if (allRes.ok) setAllTags(await allRes.json());
+      if (bookRes.ok) setBookTags(await bookRes.json());
+    } catch (e) {
+      console.error("Fetch tags error:", e);
+    }
+  };
 
   const fetchData = async () => {
     try {
@@ -32,6 +49,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
   useEffect(() => {
     fetchData();
+    fetchTags();
   }, [bookId]);
 
   const handleQuickLog = async (pages?: number) => {
@@ -106,6 +124,56 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     }
   };
 
+  const handleToggleTag = (tagId: number) => {
+    setBookTags(prev => 
+      prev.some(t => t.id === tagId)
+        ? prev.filter(t => t.id !== tagId)
+        : [...prev, allTags.find(t => t.id === tagId)!]
+    );
+  };
+
+  const handleSaveTags = async () => {
+    try {
+      const res = await fetch(`/api/books/${bookId}/tags`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ tagIds: bookTags.map(t => t.id) })
+      });
+      if (res.ok) {
+        showToast?.("Tags updated", "success");
+        setShowTagEditor(false);
+      } else {
+        showToast?.("Failed to update tags", "error");
+      }
+    } catch (e) {
+      console.error("Save tags error:", e);
+      showToast?.("Network error while saving tags", "error");
+    }
+  };
+
+  const handleCreateTag = async () => {
+    if (!newTagName.trim()) return;
+    try {
+      const res = await fetch('/api/tags', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ name: newTagName.trim() })
+      });
+      if (res.ok) {
+        const newTag = await res.json();
+        setAllTags(prev => [...prev, newTag]);
+        setBookTags(prev => [...prev, newTag]);
+        setNewTagName('');
+        showToast?.("Tag created", "success");
+      } else {
+        showToast?.("Failed to create tag", "error");
+      }
+    } catch (e) {
+      console.error("Create tag error:", e);
+      showToast?.("Network error while creating tag", "error");
+    }
+  };
+
   if (!bookDetail) return <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
     <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
     Consulting the archives...
@@ -138,6 +206,97 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
               <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{bookDetail.mode}</span>
               <span className="px-4 py-1 rounded-full bg-surface-container-high text-on-surface-variant text-[10px] font-bold tracking-widest uppercase">{statusLabel}</span>
             </div>
+
+            {/* Tags Section */}
+            <div className="pt-4 border-t border-outline-variant/10">
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-[10px] font-bold text-on-surface-variant uppercase tracking-widest">Tags</span>
+                <button 
+                  onClick={() => setShowTagEditor(!showTagEditor)}
+                  className="text-[10px] text-primary hover:underline font-bold"
+                >
+                  {showTagEditor ? 'Cancel' : 'Edit'}
+                </button>
+              </div>
+              
+              {showTagEditor ? (
+                <div className="space-y-3 animate-in fade-in slide-in-from-top-1 duration-200">
+                  <div className="flex flex-wrap gap-2">
+                    {allTags.map(tag => (
+                      <button
+                        key={tag.id}
+                        onClick={() => handleToggleTag(tag.id)}
+                        className={`px-3 py-1 rounded-full text-[10px] font-bold transition-all ${
+                          bookTags.some(t => t.id === tag.id)
+                            ? 'bg-primary text-on-primary'
+                            : 'bg-surface-container-high text-on-surface-variant hover:bg-surface-container-highest'
+                        }`}
+                      >
+                        {tag.name}
+                      </button>
+                    ))}
+                    {allTags.length === 0 && (
+                      <span className="text-[10px] text-outline-variant italic">No tags yet</span>
+                    )}
+                  </div>
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      value={newTagName}
+                      onChange={(e) => setNewTagName(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && handleCreateTag()}
+                      placeholder="New tag name"
+                      className="flex-1 bg-white border border-outline-variant/30 rounded px-3 py-1.5 text-xs focus:outline-none focus:ring-1 focus:ring-primary"
+                    />
+                    <button
+                      onClick={handleCreateTag}
+                      className="px-3 py-1.5 bg-primary text-on-primary rounded text-[10px] font-bold hover:bg-primary-dim transition-colors"
+                    >
+                      Add
+                    </button>
+                  </div>
+                  <button
+                    onClick={handleSaveTags}
+                    className="w-full py-2 bg-on-surface text-surface rounded font-bold text-xs hover:bg-primary transition-colors"
+                  >
+                    Save Tags
+                  </button>
+                </div>
+              ) : (
+                <div className="flex flex-wrap gap-2">
+                  {bookTags.length > 0 ? bookTags.map(tag => (
+                    <span key={tag.id} className="px-3 py-1 rounded-full bg-primary/10 text-primary text-[10px] font-bold">
+                      {tag.name}
+                    </span>
+                  )) : (
+                    <span className="text-[10px] text-outline-variant italic">No tags assigned</span>
+                  )}
+                </div>
+              )}
+            </div>
+
+            {/* Metadata Summary */}
+            <div className="pt-4 border-t border-outline-variant/10 space-y-3">
+              {bookDetail.isbn && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-outline-variant uppercase tracking-widest">ISBN</span>
+                  <span className="text-[11px] font-medium text-on-surface-variant select-all">{bookDetail.isbn}</span>
+                </div>
+              )}
+              {bookDetail.publisher && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-outline-variant uppercase tracking-widest">Publisher</span>
+                  <span className="text-[11px] font-medium text-on-surface-variant">{bookDetail.publisher}</span>
+                </div>
+              )}
+              {bookDetail.publication_year && (
+                <div className="flex justify-between items-center">
+                  <span className="text-[9px] font-bold text-outline-variant uppercase tracking-widest">Released</span>
+                  <span className="text-[11px] font-medium text-on-surface-variant">{bookDetail.publication_year}</span>
+                </div>
+              )}
+            </div>
+
             <div className="pt-2">
               <p className="text-on-surface-variant text-sm leading-relaxed italic">
                 “This document resides within your personal sanctuary. Every chapter archived is a step toward eternal wisdom.”
@@ -181,9 +340,20 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         {/* Book Content & Tracking */}
         <section className="flex-1 space-y-10 w-full min-w-0">
           {/* Title & Header */}
-          <header className="space-y-2">
-            <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-on-surface leading-tight font-semibold break-words hyphens-auto">{bookDetail.title}</h2>
-            <p className="text-base sm:text-lg md:text-xl text-on-surface-variant font-headline italic break-words">by {bookDetail.author}</p>
+          <header className="space-y-4">
+            <div className="space-y-2">
+              <h2 className="font-headline text-3xl sm:text-4xl md:text-5xl lg:text-6xl text-on-surface leading-tight font-semibold break-words hyphens-auto">{bookDetail.title}</h2>
+              <p className="text-base sm:text-lg md:text-xl text-on-surface-variant font-headline italic break-words">by {bookDetail.author}</p>
+            </div>
+            
+            {bookDetail.description && (
+              <div className="relative">
+                <div className="absolute -left-4 top-0 bottom-0 w-1 bg-primary/20 rounded-full"></div>
+                <p className="text-sm sm:text-base text-on-surface-variant leading-relaxed font-body italic pl-2">
+                  {bookDetail.description}
+                </p>
+              </div>
+            )}
           </header>
 
           {/* Progress Section */}

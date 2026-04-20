@@ -1,6 +1,11 @@
 export type BookStatus = 'NOT_STARTED' | 'IN_PROGRESS' | 'COMPLETED';
 export type ReadingMode = 'PHYSICAL' | 'DIGITAL';
 
+export interface Tag {
+  id: number;
+  name: string;
+}
+
 export interface Book {
   id: number;
   title: string;
@@ -11,6 +16,10 @@ export interface Book {
   mode: ReadingMode;
   cover_url?: string;
   pdf_file_path?: string;
+  isbn?: string;
+  description?: string;
+  publisher?: string;
+  publication_year?: number;
   created_at: string;
   has_reflection?: boolean;
   is_full_reflection?: boolean;
@@ -40,4 +49,5 @@ export interface Reflection {
 export interface BookDetail extends Book {
   logs: Log[];
   reflection: Reflection | null;
+  tags?: Tag[];
 }

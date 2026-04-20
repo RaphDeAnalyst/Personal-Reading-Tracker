@@ -54,6 +54,10 @@ async function startServer() {
         mode TEXT DEFAULT 'PHYSICAL',
         cover_url TEXT,
         pdf_file_path TEXT,
+        isbn TEXT,
+        description TEXT,
+        publisher TEXT,
+        publication_year INTEGER,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
 
@@ -84,6 +88,18 @@ async function startServer() {
     if (!booksInfo.some(col => col.name === 'pdf_file_path')) {
       db.exec("ALTER TABLE books ADD COLUMN pdf_file_path TEXT");
     }
+    if (!booksInfo.some(col => col.name === 'isbn')) {
+      db.exec("ALTER TABLE books ADD COLUMN isbn TEXT");
+    }
+    if (!booksInfo.some(col => col.name === 'description')) {
+      db.exec("ALTER TABLE books ADD COLUMN description TEXT");
+    }
+    if (!booksInfo.some(col => col.name === 'publisher')) {
+      db.exec("ALTER TABLE books ADD COLUMN publisher TEXT");
+    }
+    if (!booksInfo.some(col => col.name === 'publication_year')) {
+      db.exec("ALTER TABLE books ADD COLUMN publication_year INTEGER");
+    }
 
     // Migration: Reflections (learning/application/disagreement -> content/rating)
     const reflectionsInfo = db.prepare("PRAGMA table_info(reflections)").all() as any[];
@@ -102,6 +118,22 @@ async function startServer() {
     if (!logsInfo.some(col => col.name === 'current_page')) {
       db.exec("ALTER TABLE logs ADD COLUMN current_page INTEGER");
     }
+
+    // Migration: Tags (Phase 1 - Basic Tagging)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS tags (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        name TEXT UNIQUE NOT NULL
+      );
+      
+      CREATE TABLE IF NOT EXISTS book_tags (
+        book_id INTEGER NOT NULL,
+        tag_id INTEGER NOT NULL,
+        PRIMARY KEY (book_id, tag_id),
+        FOREIGN KEY (book_id) REFERENCES books(id) ON DELETE CASCADE,
+        FOREIGN KEY (tag_id) REFERENCES tags(id) ON DELETE CASCADE
+      );
+    `);
 
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
@@ -142,18 +174,85 @@ async function startServer() {
     }
   });
 
+  // Tags API (Phase 1 - Basic Tagging)
+  app.get("/api/tags", (req, res) => {
+    try {
+      const tags = db.prepare("SELECT * FROM tags ORDER BY name").all();
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching tags:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  app.post("/api/tags", (req, res) => {
+    try {
+      const { name } = req.body;
+      if (!name || !name.trim()) {
+        return res.status(400).json({ error: "Tag name is required" });
+      }
+      const result = db.prepare("INSERT INTO tags (name) VALUES (?)").run(name.trim());
+      const newTag = db.prepare("SELECT * FROM tags WHERE id = ?").get(result.lastInsertRowid);
+      res.json(newTag);
+    } catch (error) {
+      console.error("Error creating tag:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Get tags for a specific book
+  app.get("/api/books/:id/tags", (req, res) => {
+    try {
+      const tags = db.prepare(`
+        SELECT t.* FROM tags t
+        JOIN book_tags bt ON t.id = bt.tag_id
+        WHERE bt.book_id = ?
+        ORDER BY t.name
+      `).all(req.params.id);
+      res.json(tags);
+    } catch (error) {
+      console.error("Error fetching book tags:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
+  // Update tags for a book (replaces all tags)
+  app.post("/api/books/:id/tags", (req, res) => {
+    try {
+      const { tagIds } = req.body;
+      const bookId = req.params.id;
+      
+      db.transaction(() => {
+        // Remove existing tags
+        db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(bookId);
+        // Add new tags
+        if (Array.isArray(tagIds)) {
+          const insert = db.prepare("INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)");
+          for (const tagId of tagIds) {
+            insert.run(bookId, tagId);
+          }
+        }
+      })();
+      
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error updating book tags:", error);
+      res.status(500).json({ error: "Internal server error" });
+    }
+  });
+
   // Add new book
   app.post("/api/books", upload.fields([{ name: "cover", maxCount: 1 }, { name: "pdf", maxCount: 1 }]), (req, res) => {
     try {
-      const { title, author, total_pages, mode, cover_url: body_cover_url } = req.body;
+      const { title, author, total_pages, mode, cover_url: body_cover_url, isbn, description, publisher, publication_year } = req.body;
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
       
       const cover_url = files?.cover?.[0] ? `/uploads/${files.cover[0].filename}` : (body_cover_url || null);
       const pdf_file_path = files?.pdf?.[0] ? `/uploads/${files.pdf[0].filename}` : null;
 
       const info = db.prepare(
-        "INSERT INTO books (title, author, total_pages, mode, cover_url, pdf_file_path) VALUES (?, ?, ?, ?, ?, ?)"
-      ).run(title, author || "", total_pages, mode || "PHYSICAL", cover_url, pdf_file_path);
+        "INSERT INTO books (title, author, total_pages, mode, cover_url, pdf_file_path, isbn, description, publisher, publication_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
+      ).run(title, author || "", total_pages, mode || "PHYSICAL", cover_url, pdf_file_path, isbn || null, description || null, publisher || null, publication_year || null);
       
       const newBook = db.prepare("SELECT * FROM books WHERE id = ?").get(info.lastInsertRowid);
       res.json(newBook);
