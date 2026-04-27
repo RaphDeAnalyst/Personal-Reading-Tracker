@@ -493,11 +493,14 @@ async function startServer() {
   app.delete("/api/books/:id", (req, res) => {
     try {
       const { id } = req.params;
-      db.transaction(() => {
+      const deleteBook = db.transaction(() => {
         db.prepare("DELETE FROM reflections WHERE book_id = ?").run(id);
         db.prepare("DELETE FROM logs WHERE book_id = ?").run(id);
+        db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(id);
         db.prepare("DELETE FROM books WHERE id = ?").run(id);
-      })();
+      });
+      deleteBook();
+      console.log(`Book ${id} decommissioned from archive`);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting book:", error);
