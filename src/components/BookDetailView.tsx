@@ -101,6 +101,26 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     }
   };
 
+  const handleDelete = async () => {
+    setLogging(true);
+    try {
+      const res = await fetch(`/api/books/${bookId}`, {
+        method: 'DELETE'
+      });
+      if (res.ok) {
+        showToast?.("Volume decommissioned from the archive", "success");
+        onDelete();
+      } else {
+        showToast?.("Failed to decommission volume", "error");
+      }
+    } catch (e) {
+      console.error("Delete error:", e);
+      showToast?.("Network error", "error");
+    } finally {
+      setLogging(false);
+    }
+  };
+
   if (!bookDetail) return <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
     <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
     Consulting the archives...

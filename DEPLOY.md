@@ -193,3 +193,21 @@ The app will run at `http://localhost:3000` again in dev mode with Vite hot-relo
 ---
 
 **That's it!** Your Personal Reading Tracker is now a production-grade local service. 📚✨
+
+
+**Future updates:** If Google ever updates the font, run bash setup-fonts.sh to re-download the latest version.                                       
+
+
+ # Create nginx cache directory
+  sudo mkdir -p /var/cache/nginx/archivist                                                                                                          
+  sudo chown -R www-data:www-data /var/cache/nginx/archivist
+                                                                                                                                                    
+  # Copy updated nginx config                               
+  sudo cp /home/digitalhub/work/Personal-Reading-Tracker/deploy/archivist.nginx /etc/nginx/sites-available/archivist
+                                                                                                                                                    
+  # Test and reload nginx
+  sudo nginx -t                                                                                                                                     
+  sudo systemctl restart nginx                              
+                                                                                                                                                    
+  # Restart app
+  sudo systemctl restart archivist   

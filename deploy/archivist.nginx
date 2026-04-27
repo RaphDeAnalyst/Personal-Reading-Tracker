@@ -1,3 +1,5 @@
+proxy_cache_path /var/cache/nginx/archivist levels=1:2 keys_zone=archivist_cache:10m max_size=100m inactive=60d use_temp_path=off;
+
 server {
     listen 80;
     server_name localhost 192.168.1.154 _;
@@ -16,13 +18,21 @@ server {
         # Timeouts for long-running requests (PDF processing, AI metadata)
         proxy_read_timeout 120s;
         proxy_send_timeout 120s;
+
+        # Cache CSS/JS/fonts aggressively
+        proxy_cache archivist_cache;
+        proxy_cache_valid 200 1d;
+        proxy_cache_methods GET HEAD;
+        proxy_cache_key "$scheme$request_method$host$request_uri";
+        add_header X-Cache-Status $upstream_cache_status;
     }
 
     # Serve uploaded files with caching
     location /uploads/ {
         proxy_pass http://127.0.0.1:3000;
-        proxy_cache_valid 200 1d;
-        add_header Cache-Control "public, max-age=86400";
+        proxy_cache archivist_cache;
+        proxy_cache_valid 200 30d;
+        add_header Cache-Control "public, max-age=2592000";
     }
 
     access_log /var/log/nginx/archivist.access.log;
