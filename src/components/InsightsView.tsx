@@ -39,7 +39,7 @@ function DistributionChart({ title, data, icon, total }: { title: string; data: 
                 <span className="font-label text-[9px] text-on-surface-variant font-bold">{item.count} Volumes</span>
               </div>
               <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
-                <motion.div 
+                <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${barWidth}%` }}
                   transition={{ duration: 1, delay: i * 0.1 }}
@@ -105,35 +105,37 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
     return (
       <div className="py-24 flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-        <p className="font-headline italic text-on-surface-variant text-lg">Gathering your progress...</p>
+        <p className="font-headline italic text-on-surface-variant text-lg">Gathering your journey...</p>
       </div>
     );
   }
 
   if (!data) return null;
 
-  // Ensure grid starts on Sunday (dayOfWeek 0)
-  const firstDay = data.trend[0];
-  const paddingNeeded = firstDay.dayOfWeek || 0;
-  const paddedTrend = [
-    ...Array(paddingNeeded).fill(null),
-    ...data.trend
-  ];
+  // Compute wisdom index: percentage of books with reflections
+  const wisdomIndex = data.stats.completedBooks > 0
+    ? Math.round((data.stats.totalReflections / data.stats.completedBooks) * 100)
+    : 0;
+
+  // Compute average time to complete (days between start and completion)
+  // For now, we'll estimate based on pages and reading pace
+  const avgTimeToComplete = data.stats.completedBooks > 0 && data.stats.averagePagesPerDay > 0
+    ? Math.round(data.stats.totalPagesRead / data.stats.completedBooks / data.stats.averagePagesPerDay)
+    : 0;
 
   const last7Days = data.trend.slice(-7);
   const maxPages = Math.max(...last7Days.map(t => t.pages), 10);
   const dailyAverageThreshold = data.stats.averagePagesPerDay;
   const peakPages = Math.max(...last7Days.map(t => t.pages));
-  
-  // --- Chronicle Wave Logic ---
+
+  // Chronicle Wave Logic
   const chartHeight = 120;
-  const chartWidth = 800; // Large enough for smooth resolution
+  const chartWidth = 800;
   const points = data.trend.slice(-30).map((t, i) => ({
     x: (i / 29) * chartWidth,
     y: chartHeight - (Math.min(t.pages / (Math.max(maxPages, 10)), 1) * chartHeight)
   }));
 
-  // Simple Smoothing: Quadratic Bezier helper
   const generatePath = (pts: {x: number, y: number}[]) => {
     if (pts.length < 2) return "";
     let d = `M ${pts[0].x},${pts[0].y}`;
@@ -151,13 +153,14 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const areaD = `${pathD} L ${chartWidth},${chartHeight} L 0,${chartHeight} Z`;
 
   return (
-    <div className="max-w-4xl mx-auto pb-24">
+    <div className="max-w-5xl mx-auto pb-24">
+      {/* Header */}
       <header className="mb-12 flex flex-col sm:flex-row justify-between items-start gap-6">
         <div className="min-w-0">
-          <h2 className="serif-text text-3xl sm:text-4xl text-on-surface mb-2 break-words">My Journey</h2>
-          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest break-words">Insights & Growth</p>
+          <h2 className="serif-text text-3xl sm:text-4xl text-on-surface mb-2 break-words">My Archive</h2>
+          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest break-words">Wisdom & Reflection</p>
         </div>
-        <button 
+        <button
           onClick={onToggleTheme}
           className="group relative flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/10 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all shadow-sm active:scale-95"
           title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
@@ -171,31 +174,37 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         </button>
       </header>
 
-      {/* Core Stats Grid */}
+      {/* Wisdom-Focused Stats Grid - Replaces streak and avg pages */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
         <StatCard
           label="Books Completed"
           value={data.stats.completedBooks}
           icon="auto_stories"
           color="text-primary"
+          tooltip="Total books you've finished reading"
         />
         <StatCard
-          label="Total Pages"
-          value={data.stats.totalPagesRead}
-          icon="menu_book"
+          label="Wisdom Index"
+          value={`${wisdomIndex}%`}
+          icon="lightbulb"
           color="text-tertiary"
+          description="Books with reflections"
+          tooltip="Percentage of completed books with written reflections—a measure of thoughtful engagement"
         />
         <StatCard
-          label="Reading Streak"
-          value={`${data.stats.streak} Days`}
-          icon="local_fire_department"
-          color="text-orange-500"
-        />
-        <StatCard
-          label="Avg. Pages/Day"
-          value={data.stats.averagePagesPerDay}
-          icon="speed"
+          label="Avg. Days to Complete"
+          value={avgTimeToComplete}
+          icon="schedule"
           color="text-secondary"
+          description="Sustainable pace"
+          tooltip="Average days to finish a book based on your reading speed—reflects sustainable, mindful pacing"
+        />
+        <StatCard
+          label="Total Reflections"
+          value={data.stats.totalReflections}
+          icon="psychology"
+          color="text-primary"
+          tooltip="Total reflection entries written across all your books"
         />
       </div>
 
@@ -230,12 +239,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
               {Math.max(goal.target_value - data.stats.completedBooks, 0)}
             </span>
           </div>
-          <p className="text-[11px] text-on-surface-variant italic mt-3">{goal.target_value - data.stats.completedBooks > 0 ? `${goal.target_value - data.stats.completedBooks} books remaining` : 'Goal achieved!'}</p>
+          <p className="text-[11px] text-on-surface-variant italic mt-3">{goal.target_value - data.stats.completedBooks > 0 ? `${goal.target_value - data.stats.completedBooks} volumes to complete` : 'Goal achieved—your sanctuary grows!'}</p>
         </div>
       )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
-        {/* Trend Section */}
+        {/* Main Charts Section (2/3) */}
         <div className="lg:col-span-2 space-y-8">
           <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
             <div className="flex justify-between items-center mb-10">
@@ -250,13 +259,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 </div>
                 <div className="flex items-center gap-1.5">
                   <div className="w-2.5 h-2.5 rounded-full bg-primary"></div>
-                  <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Growth</span>
+                  <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Active</span>
                 </div>
               </div>
             </div>
 
             <div className="relative h-64 flex flex-col pt-8">
-              {/* Y-Axis Scale Lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-12 pr-2">
                 {[...Array(4)].map((_, i) => (
                   <div key={i} className="w-full flex items-center gap-3">
@@ -268,44 +276,40 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 ))}
               </div>
 
-              {/* Momentum Line (Dashed) */}
               {dailyAverageThreshold > 0 && (
-                <div 
+                <div
                   className="absolute left-11 right-0 border-t-2 border-dashed border-tertiary z-10 pointer-events-none"
                   style={{ bottom: `${Math.max((dailyAverageThreshold / maxPages) * 208 + 48, 56)}px` }}
                 >
                   <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    Goal: {dailyAverageThreshold}p
+                    Pace: {dailyAverageThreshold}p
                   </div>
                 </div>
               )}
 
-              {/* Bars Container */}
               <div className="flex justify-between h-full gap-2 sm:gap-4 pl-11 relative z-20">
                 {last7Days.map((t, i) => {
                   const isPeak = t.pages === peakPages && peakPages > 0;
                   const isAboveAverage = t.pages >= dailyAverageThreshold && t.pages > 0;
-                  
+
                   return (
                     <div key={i} className="flex-1 flex flex-col items-center group h-full">
                       <div className="relative w-full flex-1 flex flex-col items-center justify-end">
-                        <motion.div 
+                        <motion.div
                           initial={{ height: 0 }}
                           animate={{ height: `${Math.max((t.pages / maxPages) * 100, 2)}%` }}
                           transition={{ duration: 0.8, delay: i * 0.1 }}
                           className={`w-full max-w-[32px] rounded-t-sm transition-all relative border min-h-[4px] ${
-                            isAboveAverage 
-                              ? 'bg-primary border-primary shadow-[0_0_12px_rgba(var(--color-primary),0.4)]' 
+                            isAboveAverage
+                              ? 'bg-primary border-primary shadow-[0_0_12px_rgba(var(--color-primary),0.4)]'
                               : 'bg-primary/40 border-primary/20'
                           }`}
                         >
-                          {/* Tooltip / Label */}
                           <div className={`absolute -top-10 left-1/2 -translate-x-1/2 bg-surface-container-high border border-outline-variant/20 text-[9px] font-bold px-2.5 py-1.5 rounded-lg shadow-xl opacity-0 group-hover:opacity-100 transition-all whitespace-nowrap z-50 transform group-hover:-translate-y-1`}>
                             <span className="text-on-surface">{t.pages} pages</span>
                             {isPeak && <span className="ml-1.5 text-tertiary">★ Peak</span>}
                           </div>
 
-                          {/* Peak Indicator (Icon) */}
                           {isPeak && (
                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-primary animate-bounce">
                                <span className="material-symbols-outlined text-[14px]">stat_3</span>
@@ -324,13 +328,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 })}
               </div>
             </div>
-            
-            {/* Descriptive Context Area */}
+
             <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <p className="font-headline italic text-xs text-on-surface-variant max-w-[280px]">
-                {peakPages > dailyAverageThreshold 
-                  ? "Your momentum is gathering strength. The archives are expanding with your consistency." 
-                  : "The archive grows in silence. Every page read is a small victory over oblivion."}
+                {peakPages > dailyAverageThreshold
+                  ? "Your archive expands with steady rhythm. Depth builds through consistent presence."
+                  : "Every page read is an offering to wisdom. Depth matters more than haste."}
               </p>
               <div className="text-right shrink-0">
                 <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Weekly Volume</span>
@@ -339,7 +342,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             </div>
           </section>
 
-          {/* Monthly Chronicle Wave */}
+          {/* Chronicle Wave */}
           <section className="bg-surface-container-low p-6 sm:p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
             <div className="flex justify-between items-center mb-10">
               <div className="min-w-0">
@@ -347,23 +350,22 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                   <span className="material-symbols-outlined text-tertiary">landscape</span>
                   The Chronicle Wave
                 </h3>
-                <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Momentum Terrain</p>
+                <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Reading Journey</p>
               </div>
               <div className="flex items-center gap-4 bg-surface-container-high/50 px-5 py-2.5 rounded-xl border border-outline-variant/5">
                 <div className="text-right">
-                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency Status</span>
+                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency</span>
                   <span className="serif-text text-xl text-primary font-medium">{data.stats.consistencyLevel}</span>
                 </div>
                 <div className="w-[1px] h-8 bg-outline-variant/20 mx-1"></div>
                 <div className="text-right">
-                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Quotient</span>
+                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Score</span>
                   <span className="serif-text text-xl text-tertiary font-medium">{data.stats.consistencyScore}%</span>
                 </div>
               </div>
             </div>
 
             <div className="relative h-48 w-full mt-4">
-              {/* Y-Axis scale lines */}
               <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
                 {[...Array(3)].map((_, i) => (
                   <div key={i} className="w-full flex items-center gap-3">
@@ -375,10 +377,9 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 ))}
               </div>
 
-              {/* The SVG Wave */}
               <div className="absolute inset-0 pl-11 pb-6">
-                <svg 
-                  viewBox={`0 0 ${chartWidth} ${chartHeight}`} 
+                <svg
+                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
                   preserveAspectRatio="none"
                   className="w-full h-full overflow-visible"
                 >
@@ -388,35 +389,30 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                       <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
                     </linearGradient>
                   </defs>
-                  
-                  {/* Area Fill */}
-                  <motion.path 
+
+                  <motion.path
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     transition={{ duration: 1 }}
-                    d={areaD} 
-                    fill="url(#auraGradient)" 
+                    d={areaD}
+                    fill="url(#auraGradient)"
                   />
 
-                  {/* Wave Line (Ink) */}
-                  <motion.path 
+                  <motion.path
                     initial={{ pathLength: 0, opacity: 0 }}
                     animate={{ pathLength: 1, opacity: 1 }}
                     transition={{ duration: 1.5, ease: "easeInOut" }}
-                    d={pathD} 
-                    fill="none" 
-                    stroke="var(--color-primary)" 
-                    strokeWidth="3" 
+                    d={pathD}
+                    fill="none"
+                    stroke="var(--color-primary)"
+                    strokeWidth="3"
                     strokeLinecap="round"
-                    className="opacity-100"
                   />
 
-                  {/* Wisdom Nodes (Reflections) */}
+                  {/* Wisdom Nodes - Days with reflections */}
                   {data.trend.slice(-30).map((t, i) => {
                     if (t.pages === 0) return null;
                     const pt = points[i];
-
-                    // Check if this day has a reflection
                     const hasReflection = data.reflectionDates?.includes(t.fullDate);
 
                     return (
@@ -433,7 +429,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                           strokeWidth="1"
                           className="cursor-help"
                         />
-                        {/* Hover Circle */}
                         <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" className="cursor-help" />
                       </g>
                     );
@@ -455,118 +450,118 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
               </div>
               <div className="text-right">
                  <p className="font-headline italic text-sm text-on-surface max-w-[200px] leading-tight">
-                   "The terrain of your wisdom is ever-shifting. Every peak reached opens a new horizon."
+                   Reflection deepens every reading. The journey matters more than the destination.
                  </p>
               </div>
             </div>
           </section>
 
-          {/* Distribution Insights */}
+          {/* Genre & Author Distribution */}
           <div className="flex flex-col md:flex-row gap-6">
-            <DistributionChart 
-              title="Genre Topography" 
-              data={data.genreDistribution} 
-              icon="category" 
+            <DistributionChart
+              title="Genre Topography"
+              data={data.genreDistribution}
+              icon="category"
               total={data.stats.completedBooks || 1}
             />
-            <DistributionChart 
-              title="Author Influence" 
-              data={data.authorDistribution.map(a => ({ name: a.author, count: a.count }))} 
-              icon="pen_size_2" 
+            <DistributionChart
+              title="Author Influence"
+              data={data.authorDistribution.map(a => ({ name: a.author, count: a.count }))}
+              icon="pen_size_2"
               total={data.stats.completedBooks || 1}
             />
           </div>
+        </div>
 
-          {/* Recent Reflections */}
-          <section className="space-y-6">
-            <h3 className="font-headline italic text-xl flex items-center gap-3">
-              <span className="material-symbols-outlined text-tertiary">psychology</span>
-              Recent Insights
+        {/* Right Sidebar (1/3) - Recent Wisdom & Settings */}
+        <div className="space-y-8">
+          {/* Recent Wisdom */}
+          <section className="space-y-4">
+            <h3 className="font-headline italic text-lg flex items-center gap-3 text-tertiary">
+              <span className="material-symbols-outlined">psychology</span>
+              Recent Wisdom
             </h3>
-            <div className="grid gap-4">
-              {data.recentReflections.length > 0 ? data.recentReflections.map((r, i) => (
-                <div key={i} className="bg-surface-container-lowest p-6 rounded-xl border border-outline-variant/5 shadow-sm">
-                  <div className="flex justify-between items-start mb-3">
-                    <div>
-                      <h4 className="serif-text text-lg text-on-surface leading-tight">{r.title}</h4>
-                      <p className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant/70 mt-1">{r.author}</p>
+            <div className="space-y-4">
+              {data.recentReflections.length > 0 ? data.recentReflections.slice(0, 5).map((r, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0, y: 10 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  transition={{ delay: i * 0.1 }}
+                  className="bg-surface-container-lowest p-5 rounded-xl border border-outline-variant/5 shadow-sm hover:shadow-md transition-shadow"
+                >
+                  <div className="flex justify-between items-start mb-2 gap-2">
+                    <div className="min-w-0">
+                      <h4 className="serif-text text-sm text-on-surface leading-tight break-words">{r.title}</h4>
+                      <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant/70 mt-1">{r.author}</p>
                     </div>
-                    <div className="flex gap-0.5">
+                    <div className="flex gap-0.5 flex-shrink-0">
                       {[...Array(5)].map((_, idx) => (
-                        <span key={idx} className={`material-symbols-outlined text-[14px] ${idx < r.rating ? 'text-primary' : 'text-outline-variant/30'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <span key={idx} className={`material-symbols-outlined text-[12px] ${idx < r.rating ? 'text-primary' : 'text-outline-variant/30'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
                       ))}
                     </div>
                   </div>
-                  <p className="text-sm text-on-surface-variant leading-relaxed line-clamp-2 italic">"{r.content}"</p>
-                </div>
+                  <p className="text-xs text-on-surface-variant leading-relaxed line-clamp-2 italic">"{r.content}"</p>
+                </motion.div>
               )) : (
-                <div className="py-12 text-center border-2 border-dashed border-outline-variant/10 rounded-xl text-on-surface-variant italic font-headline opacity-60">
-                  No reflections written yet. Your wisdom awaits.
+                <div className="py-8 text-center border-2 border-dashed border-outline-variant/10 rounded-xl text-on-surface-variant italic font-headline opacity-60 text-sm">
+                  Begin your reflections. <br />Wisdom awaits.
                 </div>
               )}
             </div>
           </section>
-        </div>
 
-        {/* Sidebar Preferences */}
-        <div className="space-y-8">
-          <section className="bg-secondary-container/10 p-8 rounded-2xl border border-secondary/10">
-            <h3 className="font-headline italic text-xl mb-6 flex items-center gap-3 text-secondary">
-              <span className="material-symbols-outlined">settings</span>
+          {/* Preferences Card */}
+          <section className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
+            <h3 className="font-headline italic text-lg mb-5 flex items-center gap-3 text-on-surface">
+              <span className="material-symbols-outlined text-primary">settings</span>
               Preferences
             </h3>
-            
-            <div className="space-y-6">
-              <div className="flex flex-col gap-3">
-                <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Reading Font</span>
+
+            <div className="space-y-5">
+              <div className="flex flex-col gap-2">
+                <span className="font-label text-[9px] uppercase tracking-widest font-bold text-on-surface-variant">Font Style</span>
                 <div className="flex bg-surface-container-high p-1 rounded-lg">
-                  <button 
+                  <button
                     onClick={() => fontPreference !== 'serif' && onToggleFont()}
-                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${fontPreference === 'serif' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all ${fontPreference === 'serif' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                   >
                     Serif
                   </button>
-                  <button 
+                  <button
                     onClick={() => fontPreference !== 'sans' && onToggleFont()}
-                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${fontPreference === 'sans' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all ${fontPreference === 'sans' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                   >
                     Sans
                   </button>
                 </div>
               </div>
 
-              <div className="flex flex-col gap-3">
-                <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface-variant">Appearance</span>
+              <div className="flex flex-col gap-2">
+                <span className="font-label text-[9px] uppercase tracking-widest font-bold text-on-surface-variant">Appearance</span>
                 <div className="flex bg-surface-container-high p-1 rounded-lg">
-                  <button 
+                  <button
                     onClick={() => theme !== 'light' && onToggleTheme()}
-                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'light' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                   >
                     Light
                   </button>
-                  <button 
+                  <button
                     onClick={() => theme !== 'dark' && onToggleTheme()}
-                    className={`flex-1 py-2 text-[11px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
+                    className={`flex-1 py-2 text-[10px] font-bold uppercase tracking-widest rounded transition-all ${theme === 'dark' ? 'bg-surface text-primary shadow-sm' : 'text-on-surface-variant hover:text-on-surface'}`}
                   >
                     Dark
                   </button>
                 </div>
               </div>
-
-              <div className="pt-4 border-t border-outline-variant/10">
-                <div className="flex items-center justify-between text-on-surface-variant">
-                  <span className="font-label text-[11px] font-bold uppercase tracking-widest">Library Totals</span>
-                  <span className="serif-text italic text-lg">{data.stats.totalReflections} Reflections</span>
-                </div>
-              </div>
             </div>
           </section>
 
-          {/* Calm Milestone / Quote */}
-          <div className="p-8 text-center bg-primary/5 rounded-2xl border border-primary/10">
-             <span className="material-symbols-outlined text-primary/30 text-4xl mb-4">format_quote</span>
-             <p className="serif-text italic text-on-surface-variant leading-relaxed">
-               "Reading is an active dialogue between the author and your own soul. The archives grow as you do."
+          {/* Inspirational Quote */}
+          <div className="p-6 text-center bg-secondary/5 rounded-2xl border border-secondary/10">
+             <span className="material-symbols-outlined text-secondary/40 text-3xl mb-3 block">format_quote</span>
+             <p className="serif-text italic text-sm text-on-surface-variant leading-relaxed">
+               "Reading is a conversation with the author. Your reflections are the continuation of that dialogue."
              </p>
           </div>
         </div>
@@ -575,16 +570,66 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   );
 }
 
-function StatCard({ label, value, icon, color }: { label: string; value: string | number; icon: string; color: string }) {
+function StatCard({
+  label,
+  value,
+  icon,
+  color,
+  description,
+  tooltip
+}: {
+  label: string;
+  value: string | number;
+  icon: string;
+  color: string;
+  description?: string;
+  tooltip?: string;
+}) {
+  const [showTooltip, setShowTooltip] = useState(false);
+
   return (
-    <div className="bg-surface-container-low p-4 sm:p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col gap-4 min-w-0">
-      <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-container-high flex items-center justify-center ${color}`}>
-        <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{icon}</span>
+    <motion.div
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      className="bg-surface-container-low p-4 sm:p-6 rounded-2xl border border-outline-variant/10 shadow-sm flex flex-col gap-3 min-w-0 hover:shadow-md transition-shadow relative"
+      onMouseEnter={() => tooltip && setShowTooltip(true)}
+      onMouseLeave={() => setShowTooltip(false)}
+    >
+      <div className="flex items-start justify-between gap-2">
+        <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-container-high flex items-center justify-center flex-shrink-0 ${color}`}>
+          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{icon}</span>
+        </div>
+        {tooltip && (
+          <div className="relative flex-shrink-0">
+            <button
+              className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-on-surface hover:bg-surface-container-highest transition-colors"
+              title="Learn more"
+              aria-label="More information"
+            >
+              <span className="material-symbols-outlined text-[14px]">help</span>
+            </button>
+
+            {showTooltip && (
+              <motion.div
+                initial={{ opacity: 0, y: -4 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -4 }}
+                className="absolute -right-2 top-8 z-50 bg-on-surface text-surface rounded-lg p-3 shadow-lg min-w-[200px] max-w-[240px] text-[11px] leading-relaxed font-label"
+              >
+                {tooltip}
+                <div className="absolute -top-1.5 right-1 w-3 h-3 bg-on-surface transform rotate-45"></div>
+              </motion.div>
+            )}
+          </div>
+        )}
       </div>
       <div className="min-w-0">
         <div className="serif-text text-xl sm:text-2xl text-on-surface font-medium break-words leading-tight">{value}</div>
         <p className="font-label text-[9px] sm:text-[10px] uppercase tracking-widest text-on-surface-variant font-bold mt-1 break-words">{label}</p>
+        {description && (
+          <p className="font-label text-[8px] uppercase tracking-widest text-on-surface-variant/70 mt-2">{description}</p>
+        )}
       </div>
-    </div>
+    </motion.div>
   );
 }
