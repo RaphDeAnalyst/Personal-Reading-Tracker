@@ -297,13 +297,13 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 <div className="flex items-end gap-4 mb-4">
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{data?.stats.completedBooks} / {goal.target_value} books</span>
-                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round((data?.stats.completedBooks || 0 / goal.target_value) * 100)}%</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{(data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0} / {goal.target_value} books</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round(((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) / goal.target_value * 100)}%</span>
                     </div>
                     <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.min((data?.stats.completedBooks || 0) / goal.target_value * 100, 100)}%` }}
+                        animate={{ width: `${Math.min(((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) / goal.target_value * 100, 100)}%` }}
                         transition={{ duration: 1 }}
                         className="h-full bg-secondary rounded-full relative"
                       >
@@ -312,12 +312,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     </div>
                   </div>
                   <span className="font-headline text-xl text-secondary font-medium min-w-fit">
-                    {Math.max(goal.target_value - (data?.stats.completedBooks || 0), 0)}
+                    {Math.max(goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0), 0)}
                   </span>
                 </div>
                 <div className="flex items-end justify-between gap-4">
                   <p className="text-[11px] text-on-surface-variant italic">
-                    {goal.target_value - (data?.stats.completedBooks || 0) > 0 ? `${goal.target_value - (data?.stats.completedBooks || 0)} volumes to complete` : 'Goal achieved—your sanctuary grows!'}
+                    {goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) > 0 ? `${goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0)} volumes to complete` : 'Goal achieved—your sanctuary grows!'}
                   </p>
                   <button
                     onClick={() => {

@@ -162,7 +162,7 @@ function BookCard({ book, onSelect }: BookCardProps) {
 
 export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showToast }: DashboardProps) {
   const [books, setBooks] = useState<Book[]>([]);
-  const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
+  const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0, goalCompletions: 0 });
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const [activeTab, setActiveTab] = useState<'all' | 'now' | 'next' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
@@ -199,7 +199,8 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           setStats({
             pagesReadToday: statsData.pagesReadToday || 0,
             totalBooks: statsData.libraryStats?.total || booksData.length,
-            completedBooks: statsData.libraryStats?.completed || 0
+            completedBooks: statsData.libraryStats?.completed || 0,
+            goalCompletions: statsData.libraryStats?.goalCompletions || 0
           });
         }
       } catch (e) {
@@ -537,7 +538,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                 <span className="font-label text-[9px] uppercase tracking-widest text-outline mt-1">Finished</span>
               </div>
             </div>
-            <ReadingGoalCard completedCount={stats.completedBooks} showToast={showToast} />
+            <ReadingGoalCard completedCount={stats.goalCompletions ?? stats.completedBooks} showToast={showToast} />
           </div>
         </section>
       )}

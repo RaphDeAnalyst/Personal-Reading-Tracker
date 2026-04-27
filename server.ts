@@ -153,7 +153,44 @@ async function startServer() {
         target_value INTEGER NOT NULL,
         created_at DATETIME DEFAULT CURRENT_TIMESTAMP
       );
+
+      CREATE TABLE IF NOT EXISTS goal_completions (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        year INTEGER NOT NULL,
+        book_id INTEGER NOT NULL,
+        completed_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+        UNIQUE(year, book_id)
+      );
     `);
+
+    // Backfill goal_completions from existing COMPLETED books
+    const completedBooks = db.prepare("SELECT id, created_at FROM books WHERE status = 'COMPLETED'").all() as any[];
+    const backfill = db.transaction(() => {
+      for (const book of completedBooks) {
+        const bookId = book.id;
+        // Get the most recent log date for this book, or use created_at
+        const latestLog = db.prepare(
+          "SELECT MAX(date) as latest FROM logs WHERE book_id = ?"
+        ).get(bookId) as { latest: string | null };
+
+        const completedDate = latestLog.latest || book.created_at || new Date().toISOString();
+        const year = new Date(completedDate).getFullYear();
+
+        db.prepare(`
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
+          VALUES (?, ?, ?)
+        `).run(year, bookId, completedDate);
+      }
+    });
+
+    try {
+      backfill();
+      console.log("✓ Backfilled goal_completions from existing COMPLETED books");
+    } catch (err) {
+      console.log("Note: goal_completions backfill skipped (table may already be populated)");
+    }
+
+    db.prepare(`CREATE INDEX IF NOT EXISTS idx_goal_completions_year ON goal_completions(year);`).run();
 
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
@@ -482,6 +519,15 @@ async function startServer() {
         }
       })();
 
+      // Record completion in goal_completions if book just became COMPLETED
+      if (newStatus === 'COMPLETED' && book.status !== 'COMPLETED') {
+        const year = new Date().getFullYear();
+        db.prepare(`
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
+          VALUES (?, ?, ?)
+        `).run(year, id, new Date().toISOString());
+      }
+
       res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
     } catch (error) {
       console.error("Error logging progress:", error);
@@ -513,7 +559,11 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { status, current_page } = req.body;
-      
+
+      // Check if book exists and get its current status
+      const book = db.prepare("SELECT status FROM books WHERE id = ?").get(id) as any;
+      if (!book) return res.status(404).json({ error: "Book not found" });
+
       const updates = [];
       const params = [];
       if (status) {
@@ -528,6 +578,15 @@ async function startServer() {
 
       if (updates.length > 0) {
         db.prepare(`UPDATE books SET ${updates.join(", ")} WHERE id = ?`).run(...params);
+      }
+
+      // Record completion in goal_completions if status is being set to COMPLETED
+      if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
+        const year = new Date().getFullYear();
+        db.prepare(`
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
+          VALUES (?, ?, ?)
+        `).run(year, id, new Date().toISOString());
       }
 
       res.json({ success: true });
@@ -579,13 +638,18 @@ async function startServer() {
       const totalBooks = db.prepare("SELECT COUNT(*) as count FROM books").get() as any;
       const completedBooks = db.prepare("SELECT COUNT(*) as count FROM books WHERE status = 'COMPLETED'").get() as any;
 
-      res.json({ 
+      // Goal completions for current year
+      const currentYear = now.getFullYear();
+      const goalCompletions = db.prepare("SELECT COUNT(*) as count FROM goal_completions WHERE year = ?").get(currentYear) as any;
+
+      res.json({
         loggedToday: pagesReadToday > 0,
         pagesReadToday,
         currentFocusId: currentFocus?.id || null,
         libraryStats: {
           total: totalBooks?.count || 0,
-          completed: completedBooks?.count || 0
+          completed: completedBooks?.count || 0,
+          goalCompletions: goalCompletions?.count || 0
         }
       });
     } catch (error) {
@@ -722,9 +786,14 @@ async function startServer() {
       else if (consistencyScore > 40) consistencyLevel = "Steady";
       else if (consistencyScore > 20) consistencyLevel = "Casual";
 
+      // Goal completions for current year
+      const currentYear = new Date().getFullYear();
+      const goalCompletionsCount = db.prepare("SELECT COUNT(*) as count FROM goal_completions WHERE year = ?").get(currentYear).count || 0;
+
       res.json({
         stats: {
           completedBooks: completedBooksCount,
+          goalCompletions: goalCompletionsCount,
           totalPagesRead,
           totalReflections,
           streak,
