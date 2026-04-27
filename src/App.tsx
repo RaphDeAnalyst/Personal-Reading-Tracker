@@ -15,7 +15,13 @@ import ReflectionIndexView from './components/ReflectionIndexView';
 import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import InsightsView from './components/InsightsView';
+import Icon from './components/Icon';
 import { Book as BookType } from './types';
+import {
+  ArrowLeft, Menu, BarChart2, Moon, Sun, X,
+  CheckCircle, AlertCircle, Info,
+  BookOpen, Plus, PenLine, Quote
+} from 'lucide-react';
 
 
 type View = 
@@ -85,7 +91,7 @@ const updateUrl = (newView: View) => {
 export default function App() {
   const [view, setView] = useState<View>(() => parseViewFromUrl());
   const [loggedToday, setLoggedToday] = useState(false);
-  const [currentFocus, setCurrentFocus] = useState<Book | null>(null);
+  const [currentFocus, setCurrentFocus] = useState<BookType | null>(null);
   const [showAlert, setShowAlert] = useState(true);
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [toasts, setToasts] = useState<Toast[]>([]);
@@ -284,7 +290,7 @@ export default function App() {
               onClick={() => setShowAlert(false)}
               className="text-on-surface-variant/60 hover:text-on-surface transition-colors"
             >
-              ✕
+              <Icon icon={X} size="lg" variant="inherit" />
             </button>
           </div>
         </motion.div>
@@ -306,14 +312,14 @@ export default function App() {
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
             >
-              ←
+              <Icon icon={ArrowLeft} size="lg" variant="inherit" />
             </button>
           ) : (
             <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors md:hidden"
             >
-              ☰
+              <Icon icon={Menu} size="lg" variant="inherit" />
             </button>
           )}
         </div>
@@ -329,14 +335,14 @@ export default function App() {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
             title="View insights"
           >
-            📊
+            <Icon icon={BarChart2} size="lg" variant={view.type === 'insights' ? 'inverted' : 'inherit'} />
           </button>
           <button
             onClick={toggleTheme}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container-low"
             title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
           >
-            {theme === 'light' ? '🌙' : '☀️'}
+            <Icon icon={theme === 'light' ? Moon : Sun} size="lg" variant="inherit" />
           </button>
         </div>
       </header>
@@ -368,14 +374,20 @@ export default function App() {
               animate={{ opacity: 1, y: 0, scale: 1 }}
               exit={{ opacity: 0, scale: 0.95, transition: { duration: 0.2 } }}
               className={`px-4 py-2.5 rounded-lg shadow-lg text-xs font-label font-bold uppercase tracking-widest flex items-center gap-3 border pointer-events-auto ${
-                toast.type === 'success' ? 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' : 
-                toast.type === 'error' ? 'bg-error-container text-on-error-container border-error/20' : 
+                toast.type === 'success' ? 'bg-tertiary-container text-on-tertiary-container border-tertiary/20' :
+                toast.type === 'error' ? 'bg-error-container text-on-error-container border-error/20' :
                 'bg-surface-container-high text-on-surface border-outline-variant/20'
               }`}
             >
-              <span>
-                {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
-              </span>
+              <Icon
+                icon={
+                  toast.type === 'success' ? CheckCircle :
+                  toast.type === 'error' ? AlertCircle :
+                  Info
+                }
+                size="sm"
+                variant="inherit"
+              />
               {toast.message}
             </motion.div>
           ))}
@@ -389,27 +401,31 @@ export default function App() {
           onClick={() => navigateTo({ type: 'dashboard' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">📚 Library</span>
+          <Icon icon={BookOpen} size="md" variant={view.type === 'dashboard' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Library</span>
         </button>
         <button
           onClick={() => navigateTo({ type: 'add' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'add' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">➕ Add New</span>
+          <Icon icon={Plus} size="md" variant={view.type === 'add' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Add New</span>
         </button>
         <button
           onClick={() => currentFocus && handleResumeReading(currentFocus)}
           disabled={!currentFocus}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' || view.type === 'reader' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocus ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">✎ Log Progress</span>
+          <Icon icon={PenLine} size="md" variant={view.type === 'log-progress' || view.type === 'reader' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Log Progress</span>
         </button>
         <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>
         <button
           onClick={() => navigateTo({ type: 'reflection-index' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">💭 Reflections</span>
+          <Icon icon={Quote} size="md" variant={view.type === 'reflection-index' || view.type === 'reflection' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
         </button>
       </nav>
       )}

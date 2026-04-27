@@ -1,5 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
-
+import type { LucideIcon } from 'lucide-react';
+import Icon from './Icon';
+import { Library, Plus, BookMarked, BarChart2, X, Moon, Sun } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -10,12 +12,19 @@ interface SidebarProps {
   onToggleTheme?: () => void;
 }
 
+interface NavItem {
+  id: string;
+  label: string;
+  icon: LucideIcon;
+  disabled?: boolean;
+}
+
 export default function Sidebar({ isOpen, onClose, onNavigate, currentView, theme = 'light', onToggleTheme }: SidebarProps) {
-  const navItems = [
-    { id: 'dashboard', label: 'Library', icon: '📚' },
-    { id: 'add', label: 'Add New Book', icon: '➕' },
-    { id: 'reflection-index', label: 'Reflections', icon: '💭' },
-    { id: 'insights', label: 'Insights', icon: '📊' },
+  const navItems: NavItem[] = [
+    { id: 'dashboard', label: 'Library', icon: Library },
+    { id: 'add', label: 'Add New Book', icon: Plus },
+    { id: 'reflection-index', label: 'Reflections', icon: BookMarked },
+    { id: 'insights', label: 'Insights', icon: BarChart2 },
   ];
 
   return (
@@ -46,7 +55,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                   onClick={onClose}
                   className="p-2 text-on-surface-variant hover:text-on-surface transition-colors"
                 >
-                  ✕
+                  <Icon icon={X} size="lg" variant="inherit" />
                 </button>
               </div>
 
@@ -69,9 +78,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                             : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                       }`}
                     >
-                      <span className="text-[20px]">
-                        {item.icon}
-                      </span>
+                      <Icon icon={item.icon} size="lg" variant={currentView === item.id ? 'primary' : 'inherit'} />
                       <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">
                         {item.label}
                       </span>
@@ -93,9 +100,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                         className="w-full flex items-center gap-4 px-6 py-2.5 rounded-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low/60 hover:text-on-surface ml-2 mt-1 text-[12px]"
                         title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                       >
-                        <span className="text-[16px]">
-                          {theme === 'light' ? '🌙' : '☀️'}
-                        </span>
+                        <Icon icon={theme === 'light' ? Moon : Sun} size="md" variant="inherit" />
                         <span className="font-label text-[10px] uppercase tracking-widest font-medium">
                           {theme === 'light' ? 'Dark' : 'Light'}
                         </span>

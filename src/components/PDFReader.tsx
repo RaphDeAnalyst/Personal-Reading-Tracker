@@ -3,6 +3,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { motion, AnimatePresence } from 'motion/react';
 import { Book } from '../types';
+import Icon from './Icon';
+import { X, ChevronLeft, ChevronRight, Lock } from 'lucide-react';
 
 
 pdfjsLib.GlobalWorkerOptions.workerSrc = pdfWorker;
@@ -187,7 +189,7 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
   if (!book || !book.pdf_file_path) {
     return (
       <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center text-center p-10">
-        <div className="text-6xl mb-4">🔒</div>
+        <Icon icon={Lock} size="xl" variant="muted" />
         <h2 className="serif-text text-3xl mb-4">Volume Unreadable.</h2>
         <p className="text-on-surface-variant mb-10 max-w-sm">This volume lacks a digital manuscript or the connection is severed.</p>
         <button onClick={onBack} className="bg-primary text-on-primary px-8 py-3 rounded-xl font-label text-xs uppercase tracking-widest font-bold">Return to Library</button>
@@ -203,7 +205,7 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
       <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 bg-surface-container-highest/10 backdrop-blur-md border-b border-white/5 z-10 transition-opacity hover:opacity-100 opacity-0 md:opacity-100 group">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 text-white/70 hover:text-white transition-colors">
-            ✕
+            <Icon icon={X} size="lg" className="text-white/70" />
           </button>
           <div className="hidden sm:block">
             <h3 className="font-headline italic text-white/90 truncate max-w-[200px]">{book.title}</h3>
@@ -218,7 +220,7 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
               disabled={currentPage === 1}
               className="p-1.5 text-white/60 hover:text-white disabled:opacity-20 transition-all active:scale-95"
             >
-              ←
+              <Icon icon={ChevronLeft} size="lg" className="text-white/60" />
             </button>
             <div className="flex items-center gap-3 font-mono text-xs text-white/80">
               <span className="px-2 py-1 bg-white/5 rounded border border-white/10">{currentPage}</span>
@@ -230,7 +232,7 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
               disabled={pdf && currentPage === pdf.numPages}
               className="p-1.5 text-white/60 hover:text-white disabled:opacity-20 transition-all active:scale-95"
             >
-              →
+              <Icon icon={ChevronRight} size="lg" className="text-white/60" />
             </button>
           </div>
           <div className="w-16 h-1 rounded-full bg-white/5 hidden md:block relative overflow-hidden">

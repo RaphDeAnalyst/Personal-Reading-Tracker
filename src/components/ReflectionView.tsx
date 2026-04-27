@@ -1,5 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { BookDetail } from '../types';
+import Icon from './Icon';
+import { BookOpen, Info, Star } from 'lucide-react';
 
 
 interface ReflectionViewProps {
@@ -143,7 +145,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
       <header className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-on-surface-variant">
-            <span className="text-xl">📖</span>
+            <Icon icon={BookOpen} size="lg" variant="muted" />
             <span className="text-[10px] uppercase tracking-widest font-bold font-label">Deep Reading Session</span>
           </div>
         </div>
@@ -179,7 +181,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
 
       {/* Info Banner */}
       <div className="bg-tertiary/5 border border-tertiary/20 rounded-lg p-4 flex items-start gap-3">
-        <span className="text-lg flex-shrink-0">ℹ️</span>
+        <Icon icon={Info} size="lg" className="flex-shrink-0" />
         <p className="text-sm text-on-surface-variant">
           <span className="font-bold text-tertiary">Tip:</span> The first field is the key—filling it marks this reflection as "archived." The other two fields are optional companions to deepen your synthesis.
         </p>
@@ -278,10 +280,10 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
                   onClick={() => setRating(star)}
                   onMouseEnter={() => setHoverRating(star)}
                   onMouseLeave={() => setHoverRating(0)}
-                  className="text-3xl transition-all duration-200 hover:scale-110"
+                  className="transition-all duration-200 hover:scale-110"
                   aria-label={`Rate ${star} stars`}
                 >
-                  {star <= (hoverRating || rating) ? '★' : '☆'}
+                  <Icon icon={Star} size="xl" className={star <= (hoverRating || rating) ? 'fill-tertiary text-tertiary' : 'text-outline-variant/40'} />
                 </button>
               ))}
             </div>

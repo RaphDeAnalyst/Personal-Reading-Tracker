@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookDetail } from '../types';
+import Icon from './Icon';
+import { BookOpen, Timer } from 'lucide-react';
 
 
 interface SuccessViewProps {
@@ -41,7 +43,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
         <div className="relative inline-block">
           <div className="absolute inset-0 bg-tertiary-container rounded-full blur-3xl opacity-20 transform -translate-y-4"></div>
           <div className="relative flex items-center justify-center w-24 h-24 mx-auto bg-surface-container-low rounded-full shadow-sm border border-outline-variant/5">
-            <span className="text-5xl">📖</span>
+            <Icon icon={BookOpen} size="xl" variant="success" />
           </div>
           {/* Decorative Bookmark Element */}
           <div className="absolute -right-2 top-0 w-4 h-12 bg-tertiary opacity-80 rounded-b-sm shadow-sm transition-transform duration-500 hover:scale-y-110"></div>
@@ -67,7 +69,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
         {/* The Reading Card: Achievement Summary */}
         <div className="bg-surface-container-low/60 backdrop-blur-sm rounded-xl p-8 space-y-6 text-left relative overflow-hidden group border border-outline-variant/10 shadow-sm">
           <div className="absolute top-0 right-0 p-4 transition-transform group-hover:rotate-12 duration-500">
-            <span className="text-2xl">⏱</span>
+            <Icon icon={Timer} size="lg" variant="muted" />
           </div>
           
           <div className="relative z-10">
@@ -77,8 +79,8 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
                 {bookDetail.cover_url ? (
                   <img src={bookDetail.cover_url} alt={bookDetail.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
-                  <div className="w-full h-full flex items-center justify-center text-outline-variant/30 text-3xl">
-                    📖
+                  <div className="w-full h-full flex items-center justify-center">
+                    <Icon icon={BookOpen} size="lg" variant="muted" />
                   </div>
                 )}
               </div>

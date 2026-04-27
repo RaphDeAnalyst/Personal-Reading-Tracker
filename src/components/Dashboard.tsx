@@ -1,5 +1,10 @@
 import { useState, useEffect } from 'react';
 import { Book, ReadingGoal, Tag } from '../types';
+import Icon from './Icon';
+import {
+  Flame, Plus, PlayCircle, Search, X, BookOpen,
+  PackageOpen, Edit, MoreVertical, Loader2
+} from 'lucide-react';
 
 
 interface DashboardProps {
@@ -133,9 +138,7 @@ function BookCard({ book, onSelect }: BookCardProps) {
            {book.cover_url ? (
               <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
-              <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                
-              </div>
+              <div className="w-full h-full flex items-center justify-center"><Icon icon={BookOpen} size="xl" variant="muted" /></div>
             )}
         </div>
         <div className="flex flex-col h-full py-0.5 min-w-0">
@@ -296,7 +299,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
       {/* Today's Progress Section */}
       <section className="mb-10 flex items-center justify-between bg-surface-container-low/50 border border-outline-variant/10 rounded-xl px-4 py-3">
         <div className="flex items-center gap-3">
-          
+          <Icon icon={Flame} size="md" variant="muted" />
           <span className="font-label text-[12px] font-medium text-on-surface-variant tracking-wide">
             Today: <span className="text-on-surface font-semibold">{stats.pagesReadToday > 0 ? `${stats.pagesReadToday} pages read` : 'No reading logged today'}</span>
           </span>
@@ -315,7 +318,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           <div className="flex items-center justify-between mb-6">
             <span className="font-label text-on-surface-variant text-[0.75rem] uppercase tracking-widest font-semibold">Active Selection</span>
             <button onClick={onAddBook} className="flex items-center gap-1.5 text-primary hover:text-primary-dim transition-colors">
-              
+              <Icon icon={Plus} size="sm" />
               <span className="font-label text-[11px] font-semibold uppercase tracking-widest">New Entry</span>
             </button>
           </div>
@@ -330,9 +333,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                  {currentBook.cover_url ? (
                     <img src={currentBook.cover_url} alt={currentBook.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
-                    <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                      
-                    </div>
+                    <div className="w-full h-full flex items-center justify-center"><Icon icon={BookOpen} size="xl" variant="muted" /></div>
                   )}
               </div>
               <div className="flex flex-col flex-grow w-full z-10 min-w-0">
@@ -356,11 +357,11 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                       <p className="font-label text-[12px] text-primary/70 font-medium">{currentBook.total_pages - (currentBook.current_page || 0)} pages left</p>
                     </div>
                   </div>
-                  <button 
+                  <button
                     onClick={() => currentBook && onLogCurrent(currentBook)}
                     className="w-full px-8 py-5 bg-primary text-on-primary rounded-xl font-label font-semibold text-sm tracking-[0.15em] uppercase hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-4 group"
                   >
-                    
+                    <Icon icon={PlayCircle} size="md" variant="inverted" />
                     Resume Reading
                   </button>
                 </div>
@@ -404,17 +405,17 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           </button>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto px-4 py-2 bg-surface-container-low rounded-lg border border-outline-variant/5 group focus-within:border-primary/40 transition-all">
-          
-          <input 
-            type="text" 
+          <Icon icon={Search} size="sm" variant="muted" />
+          <input
+            type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search archive..." 
+            placeholder="Search archive..."
             className="bg-transparent border-none outline-none text-xs font-label w-full sm:w-48 placeholder:text-outline-variant/50"
           />
           {isSearching && (
             <button onClick={() => setSearchQuery('')} className="text-outline-variant hover:text-on-surface">
-              
+              <Icon icon={X} size="sm" variant="muted" />
             </button>
           )}
         </div>
@@ -505,7 +506,9 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             </div>
           ) : (
             <div className="py-24 text-center border-2 border-dashed border-outline-variant/10 rounded-3xl bg-surface-container-low/20">
-              <span className="text-6xl text-outline-variant/30 mb-4 block">📦</span>
+              <div className="mb-4 flex justify-center">
+                <Icon icon={PackageOpen} size="xl" variant="muted" />
+              </div>
               <p className="font-headline italic text-2xl text-on-surface-variant">Empty Section.</p>
               <p className="text-sm text-outline-variant mt-2">No volumes found in this section of the archive.</p>
               <button onClick={onAddBook} className="mt-6 text-primary font-label text-[10px] uppercase tracking-widest font-bold hover:underline">Add New Entry</button>

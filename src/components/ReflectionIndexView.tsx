@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { motion } from 'motion/react';
+import Icon from './Icon';
+import { Archive, Search, ChevronRight, BookOpen, PenLine } from 'lucide-react';
 
 
 interface ReflectionIndexViewProps {
@@ -43,7 +45,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
       {/* Header */}
       <header className="space-y-4">
         <div className="flex items-center gap-3 text-on-surface-variant">
-          
+          <Icon icon={Archive} size="md" variant="muted" />
           <span className="text-[10px] uppercase tracking-widest font-bold font-label">The Archivist</span>
         </div>
         <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
@@ -52,8 +54,8 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
         {/* Search Bar */}
         <div className="flex items-center gap-3 px-4 py-3 bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl focus-within:border-primary/30 transition-all group">
-          
-          <input 
+          <Icon icon={Search} size="sm" variant="muted" />
+          <input
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -93,21 +95,19 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
         <section className="flex flex-col gap-6">
           {displayBooks.length === 0 ? (
             <div className="py-20 text-center border border-dashed border-outline-variant/30 rounded-2xl bg-surface-container-low/30">
-              <span className="text-4xl text-outline-variant/40 mb-4 block">
-                {searchQuery ? '🔍' : (activeTab === 'pending' ? '📚' : '✎')}
-              </span>
+              <Icon icon={searchQuery ? Search : (activeTab === 'pending' ? BookOpen : PenLine)} size="xl" variant="muted" />
               <p className="font-headline italic text-xl text-on-surface-variant">
                 {searchQuery ? 'No matched records.' : (activeTab === 'pending' ? 'All volumes have been synthesized.' : 'Your archive of reflections is currently empty.')}
               </p>
               <p className="text-sm text-outline-variant mt-2 max-w-xs mx-auto">
-                {searchQuery 
-                  ? 'Your search query did not correlate with any current or archived volumes.' 
-                  : (activeTab === 'pending' 
-                      ? 'Complete a book to unlock its reflection sanctuary.' 
+                {searchQuery
+                  ? 'Your search query did not correlate with any current or archived volumes.'
+                  : (activeTab === 'pending'
+                      ? 'Complete a book to unlock its reflection sanctuary.'
                       : 'Synthesize your first reading experience to begin your journal.')}
               </p>
               {searchQuery && (
-                <button 
+                <button
                   onClick={() => setSearchQuery('')}
                   className="mt-6 text-[10px] uppercase tracking-widest font-bold text-primary hover:underline transition-all"
                 >
@@ -115,48 +115,46 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
                 </button>
               )}
             </div>
-          ) : (
-            <div className="grid gap-4">
-              {displayBooks.map((book) => (
-                <motion.button
-                  key={book.id}
-                  layout
-                  whileHover={{ y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelectBook(book.id)}
-                  className="w-full bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl p-4 sm:p-5 text-left flex items-center gap-4 sm:gap-6 hover:bg-surface-container transition-all group overflow-hidden"
-                >
-                  {/* Book Cover Small */}
-                  <div className="w-10 h-14 sm:w-12 sm:h-18 bg-surface-container-highest rounded shadow-sm flex-shrink-0 overflow-hidden group-hover:shadow-md transition-shadow">
-                    {book.cover_url ? (
-                      <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                        
-                      </div>
-                    )}
-                  </div>
+        ) : (
+          <div className="grid gap-4">
+            {displayBooks.map((book) => (
+              <motion.button
+                key={book.id}
+                layout
+                whileHover={{ y: -2 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={() => onSelectBook(book.id)}
+                className="w-full bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl p-4 sm:p-5 text-left flex items-center gap-4 sm:gap-6 hover:bg-surface-container transition-all group overflow-hidden"
+              >
+                {/* Book Cover Small */}
+                <div className="w-10 h-14 sm:w-12 sm:h-18 bg-surface-container-highest rounded shadow-sm flex-shrink-0 overflow-hidden group-hover:shadow-md transition-shadow">
+                  {book.cover_url ? (
+                    <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
+                  ) : (
+                    <div className="w-full h-full flex items-center justify-center"><Icon icon={BookOpen} size="md" variant="muted" /></div>
+                  )}
+                </div>
 
-                  {/* Info */}
-                  <div className="flex-1 min-w-0 pr-2">
-                    <h3 className="font-headline text-base sm:text-lg text-on-surface line-clamp-2 break-words group-hover:italic transition-all leading-tight">
-                      {book.title}
-                    </h3>
-                    <div className="flex items-center gap-3 mt-1 min-w-0">
-                      <span className="text-[9px] sm:text-[10px] text-on-surface-variant/60 font-bold uppercase tracking-widest italic opacity-70 break-words line-clamp-1">
-                        {book.author || 'Anonymous'}
-                      </span>
-                    </div>
+                {/* Info */}
+                <div className="flex-1 min-w-0 pr-2">
+                  <h3 className="font-headline text-base sm:text-lg text-on-surface line-clamp-2 break-words group-hover:italic transition-all leading-tight">
+                    {book.title}
+                  </h3>
+                  <div className="flex items-center gap-3 mt-1 min-w-0">
+                    <span className="text-[9px] sm:text-[10px] text-on-surface-variant/60 font-bold uppercase tracking-widest italic opacity-70 break-words line-clamp-1">
+                      {book.author || 'Anonymous'}
+                    </span>
                   </div>
+                </div>
 
-                  {/* Action Reveal */}
-                  <div className="flex items-center text-outline-variant group-hover:text-primary transition-colors shrink-0">
-                    
-                  </div>
-                </motion.button>
-              ))}
-            </div>
-          )}
+                {/* Action Reveal */}
+                <div className="flex items-center text-outline-variant group-hover:text-primary transition-colors shrink-0">
+                  <Icon icon={ChevronRight} size="md" variant="muted" />
+                </div>
+              </motion.button>
+            ))}
+          </div>
+        )}
         </section>
       </div>
 

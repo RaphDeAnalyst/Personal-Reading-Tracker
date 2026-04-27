@@ -3,6 +3,8 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Tag } from '../types';
 import TagSelector from './TagSelector';
+import Icon from './Icon';
+import { Book, FileText, Upload, CloudUpload, Search, Loader2, Archive, BookOpen } from 'lucide-react';
 
 
 // Configure PDF.js worker
@@ -246,17 +248,15 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             <div className="aspect-[3/4] bg-surface-container-low rounded-lg flex items-center justify-center p-2 relative overflow-hidden group border border-outline-variant/10 shadow-sm">
               <div className="absolute inset-0 bg-gradient-to-tr from-primary/5 to-transparent"></div>
               {previewUrl ? (
-                <img 
-                  src={previewUrl} 
-                  alt="Cover Preview" 
+                <img
+                  src={previewUrl}
+                  alt="Cover Preview"
                   className="w-full h-full object-cover rounded shadow-md animate-in fade-in duration-500"
                   referrerPolicy="no-referrer"
                 />
               ) : (
-                <div className="text-center">
-                  <span className={`text-4xl mb-2 transition-colors ${extracting ? 'animate-pulse text-tertiary' : 'text-outline-variant/40'}`}>
-                    {extracting ? '⟳' : '📖'}
-                  </span>
+                <div className="text-center flex flex-col items-center gap-2">
+                  <Icon icon={extracting ? Loader2 : BookOpen} size="xl" variant={extracting ? 'primary' : 'muted'} className={extracting ? 'animate-spin' : ''} />
                   <p className="text-[10px] uppercase tracking-widest text-outline-variant font-medium">
                     {extracting ? 'Analyzing Volume...' : 'Cover Preview'}
                   </p>
@@ -277,20 +277,20 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 Journal Format
               </label>
               <div className="flex gap-4">
-                <button 
+                <button
                   type="button"
                   onClick={() => setFormData({ ...formData, mode: 'PHYSICAL' })}
                   className={`flex-1 p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.mode === 'PHYSICAL' ? 'bg-primary/5 border-primary shadow-sm' : 'bg-surface border-outline-variant/20 hover:border-primary/40'}`}
                 >
-                  
+                  <Icon icon={Book} size="lg" variant={formData.mode === 'PHYSICAL' ? 'primary' : 'muted'} />
                   <span className="text-[10px] uppercase tracking-widest font-bold">Physical</span>
                 </button>
-                <button 
+                <button
                   type="button"
                   onClick={() => setFormData({ ...formData, mode: 'DIGITAL' })}
                   className={`flex-1 p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.mode === 'DIGITAL' ? 'bg-primary/5 border-primary shadow-sm' : 'bg-surface border-outline-variant/20 hover:border-primary/40'}`}
                 >
-                  
+                  <Icon icon={FileText} size="lg" variant={formData.mode === 'DIGITAL' ? 'primary' : 'muted'} />
                   <span className="text-[10px] uppercase tracking-widest font-bold">Digital</span>
                 </button>
               </div>
@@ -310,15 +310,13 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     type="file"
                     onChange={handlePDFChange}
                   />
-                  <label 
+                  <label
                     className={`flex flex-col items-center justify-center border-2 border-dashed rounded-2xl p-10 cursor-pointer transition-all bg-surface-container-low/30 hover:bg-surface-container-low/50 ${
                       selectedPDF ? 'border-tertiary bg-tertiary/5' : 'border-outline-variant/30 hover:border-primary/40'
                     }`}
                     htmlFor="digital_file"
                   >
-                    <span className={`text-3xl mb-3 transition-colors ${selectedPDF ? 'text-tertiary' : 'text-outline-variant'}`}>
-                      {extracting ? '⟳' : (selectedPDF ? '📄' : '☁')}
-                    </span>
+                    <Icon icon={selectedPDF ? FileText : (extracting ? Loader2 : CloudUpload)} size="xl" variant={selectedPDF ? 'success' : (extracting ? 'primary' : 'muted')} className={extracting ? 'animate-spin' : ''} />
                     <p className="text-sm font-headline text-on-surface mb-1">
                       {extracting ? 'Synthesizing metadata...' : (selectedPDF ? selectedPDF.name : 'Upload PDF')}
                     </p>
@@ -410,9 +408,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     disabled={lookingUp || loading}
                     className="px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                   >
-                    <span className={`${lookingUp ? 'animate-spin' : ''}`}>
-                      {lookingUp ? '⟳' : '🔍'}
-                    </span>
+                    <Icon icon={lookingUp ? Loader2 : Search} size="sm" className={lookingUp ? 'animate-spin' : ''} />
                     {lookingUp ? 'Looking...' : 'Lookup'}
                   </button>
                 </div>
@@ -482,7 +478,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     className="flex items-center justify-center gap-3 px-6 py-4 rounded-lg cursor-pointer transition-all border border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low/50 bg-surface-container-low/30 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface"
                     htmlFor="cover_file"
                   >
-                    
+                    <Icon icon={Upload} size="md" variant="muted" />
                     {selectedFile ? 'Change Cover Image' : 'Upload Cover Image'}
                   </label>
                 </div>
@@ -525,6 +521,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 className="w-full sm:w-auto bg-primary text-on-primary px-8 sm:px-12 py-4 rounded-lg font-label text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-3 hover:bg-primary-dim active:scale-95 transition-all shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
               >
+                <Icon icon={loading ? Loader2 : Archive} size="md" variant="inverted" className={loading ? 'animate-spin' : ''} />
                 <span>{loading ? 'Archiving...' : `Add to Archive`}</span>
               </button>
               <button

@@ -1,6 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Book } from '../types';
 import SuccessView from './SuccessView';
+import Icon from './Icon';
+import { ChevronUp, ChevronDown, BookOpen, Loader2 } from 'lucide-react';
 
 
 interface LogProgressViewProps {
@@ -80,7 +82,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
 
   if (!book) return (
     <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
-      <div className="w-8 h-8 border-2 border-primary/20 border-t-primary rounded-full animate-spin"></div>
+      <Icon icon={Loader2} size="lg" variant="primary" className="animate-spin" />
       Consulting the archives...
     </div>
   );
@@ -97,8 +99,8 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
           {book.cover_url ? (
             <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-outline-variant/30 text-4xl">
-              📖
+            <div className="w-full h-full flex items-center justify-center">
+              <Icon icon={BookOpen} size="xl" variant="muted" />
             </div>
           )}
         </div>
@@ -128,19 +130,19 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
                 />
                 
                 <div className="flex flex-col gap-1 ml-2">
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => adjustPage(1)}
                     className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
                   >
-                    <ChevronUp className="w-6 h-6" />
+                    <Icon icon={ChevronUp} size="lg" variant="inherit" />
                   </button>
-                  <button 
-                    type="button" 
+                  <button
+                    type="button"
                     onClick={() => adjustPage(-1)}
                     className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
                   >
-                    <ChevronDown className="w-6 h-6" />
+                    <Icon icon={ChevronDown} size="lg" variant="inherit" />
                   </button>
                 </div>
                 
