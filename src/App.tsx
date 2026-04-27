@@ -15,8 +15,8 @@ import ReflectionIndexView from './components/ReflectionIndexView';
 import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import InsightsView from './components/InsightsView';
-import { Book } from './types';
-import { Calendar, X, ArrowLeft, Menu, Download, PlusCircle, Edit, BookOpen } from 'lucide-react';
+import { Book as BookType } from './types';
+import { Calendar, X, ArrowLeft, Menu, Download, PlusCircle, Edit, BookOpen, Book } from 'lucide-react';
 
 
 type View = 
@@ -135,7 +135,7 @@ export default function App() {
     try {
       const res = await fetch('/api/books');
       if (res.ok) {
-        const books: Book[] = await res.json();
+        const books: BookType[] = await res.json();
         const active = books.find(b => b.status === 'IN_PROGRESS');
         setCurrentFocus(active || null);
       }
@@ -167,7 +167,7 @@ export default function App() {
     updateUrl(newView);
   };
 
-  const handleResumeReading = (book: Book) => {
+  const handleResumeReading = (book: BookType) => {
     if (book.mode === 'DIGITAL') {
       navigateTo({ type: 'reader', bookId: book.id });
     } else {
