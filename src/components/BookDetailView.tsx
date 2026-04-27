@@ -58,6 +58,25 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
     );
   };
 
+  const handleMarkAsCompleted = async () => {
+    try {
+      const res = await fetch(`/api/books/${bookId}`, {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ status: 'COMPLETED' })
+      });
+      if (res.ok) {
+        showToast?.("Volume marked as completed", "success");
+        fetchData();
+      } else {
+        showToast?.("Failed to mark as completed", "error");
+      }
+    } catch (e) {
+      console.error("Mark completed error:", e);
+      showToast?.("Network error", "error");
+    }
+  };
+
   const handleSaveTags = async () => {
     if (logging) return;
     setLogging(true);

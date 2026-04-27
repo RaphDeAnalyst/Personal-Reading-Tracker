@@ -746,9 +746,24 @@ async function startServer() {
       appType: "spa",
     });
     app.use(vite.middlewares);
+
+    // SPA fallback for dev mode - serve index.html for all non-API routes
+    app.use((req, res) => {
+      res.end(`
+        <!DOCTYPE html>
+        <html>
+          <head><meta charset="utf-8"></head>
+          <body>
+            <div id="root"></div>
+            <script type="module" src="/src/main.tsx"><\/script>
+          </body>
+        </html>
+      `);
+    });
   } else {
     const distPath = path.join(process.cwd(), "dist");
     app.use(express.static(distPath));
+    // SPA fallback for production - serve index.html for all non-API/non-static routes
     app.get("*", (req, res) => {
       res.sendFile(path.join(distPath, "index.html"));
     });

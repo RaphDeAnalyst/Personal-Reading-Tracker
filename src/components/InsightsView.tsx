@@ -75,6 +75,9 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const [data, setData] = useState<InsightsData | null>(null);
   const [goal, setGoal] = useState<GoalData | null>(null);
   const [loading, setLoading] = useState(true);
+  const [editingGoal, setEditingGoal] = useState(false);
+  const [goalInput, setGoalInput] = useState('');
+  const [savingGoal, setSavingGoal] = useState(false);
 
   useEffect(() => {
     const fetchInsights = async () => {
@@ -90,6 +93,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         if (goalRes.ok) {
           const goalJson = await goalRes.json();
           setGoal(goalJson);
+          setGoalInput(goalJson.target_value?.toString() || '');
         }
       } catch (err) {
         console.error(err);
@@ -100,6 +104,37 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
     };
     fetchInsights();
   }, []);
+
+  const handleSaveGoal = async () => {
+    const value = parseInt(goalInput, 10);
+    if (isNaN(value) || value <= 0) {
+      showToast?.("Please enter a valid number", "error");
+      return;
+    }
+
+    setSavingGoal(true);
+    try {
+      const currentYear = new Date().getFullYear();
+      const res = await fetch('/api/goals', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ year: currentYear, target_value: value })
+      });
+      if (res.ok) {
+        const updatedGoal = await res.json();
+        setGoal(updatedGoal);
+        setEditingGoal(false);
+        showToast?.("Reading goal updated", "success");
+      } else {
+        showToast?.("Failed to save goal", "error");
+      }
+    } catch (err) {
+      console.error(err);
+      showToast?.("Error saving goal", "error");
+    } finally {
+      setSavingGoal(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -209,39 +244,105 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       </div>
 
       {/* Annual Goal Card */}
-      {goal && goal.target_value > 0 && (
-        <div className="mb-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
-          <div className="flex items-center justify-between mb-4">
-            <h3 className="font-headline italic text-lg text-primary flex items-center gap-3">
-              <span className="material-symbols-outlined text-secondary">target</span>
-              Annual Reading Goal
-            </h3>
-            <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{goal.year}</span>
-          </div>
-          <div className="flex items-end gap-4">
-            <div className="flex-1">
-              <div className="flex justify-between items-center mb-2">
-                <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{data.stats.completedBooks} / {goal.target_value} books</span>
-                <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round((data.stats.completedBooks / goal.target_value) * 100)}%</span>
-              </div>
-              <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
-                <motion.div
-                  initial={{ width: 0 }}
-                  animate={{ width: `${Math.min((data.stats.completedBooks / goal.target_value) * 100, 100)}%` }}
-                  transition={{ duration: 1 }}
-                  className="h-full bg-secondary rounded-full relative"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10"></div>
-                </motion.div>
+      <div className="mb-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="font-headline italic text-lg text-primary flex items-center gap-3">
+            <span className="material-symbols-outlined text-secondary">target</span>
+            Annual Reading Goal
+          </h3>
+          <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{new Date().getFullYear()}</span>
+        </div>
+
+        {editingGoal ? (
+          <div className="space-y-4">
+            <div className="flex items-end gap-3">
+              <div className="flex-1">
+                <label className="block font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mb-2">Target books to read</label>
+                <input
+                  type="number"
+                  value={goalInput}
+                  onChange={(e) => setGoalInput(e.target.value)}
+                  className="w-full px-3 py-2 bg-surface-container-highest border border-outline-variant/20 rounded-lg text-on-surface font-label text-sm focus:outline-none focus:border-primary"
+                  placeholder="Enter number of books"
+                  min="1"
+                  autoFocus
+                />
               </div>
             </div>
-            <span className="font-headline text-xl text-secondary font-medium min-w-fit">
-              {Math.max(goal.target_value - data.stats.completedBooks, 0)}
-            </span>
+            <div className="flex gap-2 justify-end">
+              <button
+                onClick={() => setEditingGoal(false)}
+                className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors"
+              >
+                Cancel
+              </button>
+              <button
+                onClick={handleSaveGoal}
+                disabled={savingGoal}
+                className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg bg-secondary text-on-secondary hover:shadow-md transition-shadow disabled:opacity-50"
+              >
+                {savingGoal ? 'Saving...' : 'Save Goal'}
+              </button>
+            </div>
           </div>
-          <p className="text-[11px] text-on-surface-variant italic mt-3">{goal.target_value - data.stats.completedBooks > 0 ? `${goal.target_value - data.stats.completedBooks} volumes to complete` : 'Goal achieved—your sanctuary grows!'}</p>
-        </div>
-      )}
+        ) : (
+          <>
+            {goal && goal.target_value > 0 ? (
+              <>
+                <div className="flex items-end gap-4 mb-4">
+                  <div className="flex-1">
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{data?.stats.completedBooks} / {goal.target_value} books</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round((data?.stats.completedBooks || 0 / goal.target_value) * 100)}%</span>
+                    </div>
+                    <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
+                      <motion.div
+                        initial={{ width: 0 }}
+                        animate={{ width: `${Math.min((data?.stats.completedBooks || 0) / goal.target_value * 100, 100)}%` }}
+                        transition={{ duration: 1 }}
+                        className="h-full bg-secondary rounded-full relative"
+                      >
+                        <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10"></div>
+                      </motion.div>
+                    </div>
+                  </div>
+                  <span className="font-headline text-xl text-secondary font-medium min-w-fit">
+                    {Math.max(goal.target_value - (data?.stats.completedBooks || 0), 0)}
+                  </span>
+                </div>
+                <div className="flex items-end justify-between gap-4">
+                  <p className="text-[11px] text-on-surface-variant italic">
+                    {goal.target_value - (data?.stats.completedBooks || 0) > 0 ? `${goal.target_value - (data?.stats.completedBooks || 0)} volumes to complete` : 'Goal achieved—your sanctuary grows!'}
+                  </p>
+                  <button
+                    onClick={() => {
+                      setGoalInput(goal.target_value.toString());
+                      setEditingGoal(true);
+                    }}
+                    className="flex-shrink-0 px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5"
+                  >
+                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                    Edit
+                  </button>
+                </div>
+              </>
+            ) : (
+              <div className="space-y-4">
+                <p className="text-sm text-on-surface-variant italic">No goal set yet. Set an annual reading target to track your progress.</p>
+                <button
+                  onClick={() => {
+                    setGoalInput('');
+                    setEditingGoal(true);
+                  }}
+                  className="px-4 py-2 text-[10px] font-bold uppercase tracking-widest rounded-lg bg-secondary text-on-secondary hover:shadow-md transition-shadow"
+                >
+                  + Set Goal
+                </button>
+              </div>
+            )}
+          </>
+        )}
+      </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Main Charts Section (2/3) */}

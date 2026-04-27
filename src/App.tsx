@@ -34,8 +34,55 @@ export interface Toast {
   type: 'success' | 'error' | 'info';
 }
 
+const parseViewFromUrl = (): View => {
+  const params = new URLSearchParams(window.location.search);
+  const viewType = params.get('view');
+  const bookId = params.get('bookId');
+
+  switch (viewType) {
+    case 'add':
+      return { type: 'add' };
+    case 'detail':
+      return bookId ? { type: 'detail', bookId: parseInt(bookId) } : { type: 'dashboard' };
+    case 'reflection':
+      return bookId ? { type: 'reflection', bookId: parseInt(bookId) } : { type: 'dashboard' };
+    case 'reflection-index':
+      return { type: 'reflection-index' };
+    case 'log-progress':
+      return bookId ? { type: 'log-progress', bookId: parseInt(bookId) } : { type: 'dashboard' };
+    case 'reader':
+      return bookId ? { type: 'reader', bookId: parseInt(bookId) } : { type: 'dashboard' };
+    case 'insights':
+      return { type: 'insights' };
+    case 'success':
+      return bookId ? { type: 'success', bookId: parseInt(bookId) } : { type: 'dashboard' };
+    default:
+      return { type: 'dashboard' };
+  }
+};
+
+const updateUrl = (newView: View) => {
+  let query = '';
+  if (newView.type === 'dashboard') {
+    query = '?view=dashboard';
+  } else if (newView.type === 'add') {
+    query = '?view=add';
+  } else if (newView.type === 'detail' || newView.type === 'reflection' || newView.type === 'log-progress' || newView.type === 'reader' || newView.type === 'success') {
+    query = `?view=${newView.type}&bookId=${newView.bookId}`;
+  } else if (newView.type === 'reflection-index') {
+    query = '?view=reflection-index';
+  } else if (newView.type === 'insights') {
+    query = '?view=insights';
+  }
+
+  const newUrl = `${window.location.pathname}${query}`;
+  if (window.location.search !== query) {
+    window.history.pushState({ view: newView }, '', newUrl);
+  }
+};
+
 export default function App() {
-  const [view, setView] = useState<View>({ type: 'dashboard' });
+  const [view, setView] = useState<View>(() => parseViewFromUrl());
   const [loggedToday, setLoggedToday] = useState(false);
   const [currentFocus, setCurrentFocus] = useState<Book | null>(null);
   const [showAlert, setShowAlert] = useState(true);
@@ -100,11 +147,29 @@ export default function App() {
     fetchBooks();
   }, [view]);
 
+  useEffect(() => {
+    const handlePopState = (event: PopStateEvent) => {
+      if (event.state?.view) {
+        setView(event.state.view);
+      } else {
+        setView(parseViewFromUrl());
+      }
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
+
+  const navigateTo = (newView: View) => {
+    setView(newView);
+    updateUrl(newView);
+  };
+
   const handleResumeReading = (book: Book) => {
     if (book.mode === 'DIGITAL') {
-      setView({ type: 'reader', bookId: book.id });
+      navigateTo({ type: 'reader', bookId: book.id });
     } else {
-      setView({ type: 'log-progress', bookId: book.id });
+      navigateTo({ type: 'log-progress', bookId: book.id });
     }
   };
 
@@ -112,24 +177,24 @@ export default function App() {
     switch (view.type) {
       case 'dashboard':
         return (
-          <Dashboard 
-            onSelectBook={(id) => setView({ type: 'detail', bookId: id })} 
-            onAddBook={() => setView({ type: 'add' })} 
+          <Dashboard
+            onSelectBook={(id) => navigateTo({ type: 'detail', bookId: id })}
+            onAddBook={() => navigateTo({ type: 'add' })}
             onLogCurrent={() => currentFocus && handleResumeReading(currentFocus)}
             showToast={showToast}
           />
         );
       case 'add':
-        return <AddBook onBack={() => setView({ type: 'dashboard' })} onAdded={() => { fetchBooks(); setView({ type: 'dashboard' }); }} showToast={showToast} />;
+        return <AddBook onBack={() => navigateTo({ type: 'dashboard' })} onAdded={() => { fetchBooks(); navigateTo({ type: 'dashboard' }); }} showToast={showToast} />;
       case 'detail':
         return (
           <BookDetailView 
             bookId={view.bookId} 
-            onBack={() => setView({ type: 'dashboard' })} 
-            onLogProgress={(id) => setView({ type: 'log-progress', bookId: id })}
-            onWriteReflection={(id) => setView({ type: 'reflection', bookId: id })}
-            onOpenReader={(id) => setView({ type: 'reader', bookId: id })}
-            onDelete={() => { fetchBooks(); setView({ type: 'dashboard' }); }}
+            onBack={() => navigateTo({ type: 'dashboard' })} 
+            onLogProgress={(id) => navigateTo({ type: 'log-progress', bookId: id })}
+            onWriteReflection={(id) => navigateTo({ type: 'reflection', bookId: id })}
+            onOpenReader={(id) => navigateTo({ type: 'reader', bookId: id })}
+            onDelete={() => { fetchBooks(); navigateTo({ type: 'dashboard' }); }}
             showToast={showToast}
           />
         );
@@ -137,15 +202,15 @@ export default function App() {
         return (
           <ReflectionView 
             bookId={view.bookId} 
-            onBack={() => setView({ type: 'reflection-index' })} 
-            onComplete={(id) => setView({ type: 'success', bookId: id })}
+            onBack={() => navigateTo({ type: 'reflection-index' })} 
+            onComplete={(id) => navigateTo({ type: 'success', bookId: id })}
             showToast={showToast}
           />
         );
       case 'reflection-index':
         return (
           <ReflectionIndexView 
-            onSelectBook={(id) => setView({ type: 'reflection', bookId: id })}
+            onSelectBook={(id) => navigateTo({ type: 'reflection', bookId: id })}
           />
         );
       case 'insights':
@@ -154,9 +219,9 @@ export default function App() {
         return (
           <LogProgressView 
             bookId={view.bookId} 
-            onBack={() => setView({ type: 'detail', bookId: view.bookId })} 
-            onSaved={() => { checkStatus(); setView({ type: 'detail', bookId: view.bookId }); }} 
-            onViewJournal={(id) => setView({ type: 'reflection', bookId: id })}
+            onBack={() => navigateTo({ type: 'detail', bookId: view.bookId })} 
+            onSaved={() => { checkStatus(); navigateTo({ type: 'detail', bookId: view.bookId }); }} 
+            onViewJournal={(id) => navigateTo({ type: 'reflection', bookId: id })}
             showToast={showToast}
           />
         );
@@ -164,8 +229,8 @@ export default function App() {
         return (
           <PDFReader 
             bookId={view.bookId} 
-            onBack={() => setView({ type: 'detail', bookId: view.bookId })}
-            onFinish={() => setView({ type: 'success', bookId: view.bookId })}
+            onBack={() => navigateTo({ type: 'detail', bookId: view.bookId })}
+            onFinish={() => navigateTo({ type: 'success', bookId: view.bookId })}
             showToast={showToast}
           />
         );
@@ -173,8 +238,8 @@ export default function App() {
         return (
           <SuccessView 
             bookId={view.bookId} 
-            onFinish={() => { fetchBooks(); setView({ type: 'dashboard' }); }} 
-            onViewJournal={() => setView({ type: 'reflection', bookId: view.bookId })}
+            onFinish={() => { fetchBooks(); navigateTo({ type: 'dashboard' }); }} 
+            onViewJournal={() => navigateTo({ type: 'reflection', bookId: view.bookId })}
           />
         );
     }
@@ -190,7 +255,7 @@ export default function App() {
             isOpen={isSidebarOpen} 
             onClose={() => setIsSidebarOpen(!isSidebarOpen)} 
             onNavigate={(v) => {
-              setView(v);
+              navigateTo(v);
               setIsSidebarOpen(false);
             }}
             currentView={view.type}
@@ -230,12 +295,12 @@ export default function App() {
           {view.type !== 'dashboard' ? (
             <button 
               onClick={() => {
-                if (view.type === 'detail') setView({ type: 'dashboard' });
-                else if (view.type === 'reflection') setView({ type: 'reflection-index' });
-                else if (view.type === 'reflection-index') setView({ type: 'dashboard' });
-                else if (view.type === 'log-progress') setView({ type: 'detail', bookId: (view as any).bookId });
-                else if (view.type === 'insights') setView({ type: 'dashboard' });
-                else setView({ type: 'dashboard' });
+                if (view.type === 'detail') navigateTo({ type: 'dashboard' });
+                else if (view.type === 'reflection') navigateTo({ type: 'reflection-index' });
+                else if (view.type === 'reflection-index') navigateTo({ type: 'dashboard' });
+                else if (view.type === 'log-progress') navigateTo({ type: 'detail', bookId: (view as any).bookId });
+                else if (view.type === 'insights') navigateTo({ type: 'dashboard' });
+                else navigateTo({ type: 'dashboard' });
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
             >
@@ -251,13 +316,13 @@ export default function App() {
           )}
         </div>
         <h1 
-          onClick={() => setView({ type: 'dashboard' })}
+          onClick={() => navigateTo({ type: 'dashboard' })}
           className="font-headline italic text-2xl tracking-tight text-on-surface cursor-pointer"
         >
           The Archivist
         </h1>
         <button 
-          onClick={() => setView({ type: 'insights' })}
+          onClick={() => navigateTo({ type: 'insights' })}
           className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
         >
           <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'insights' ? "'FILL' 1" : "'FILL' 0" }}>
@@ -311,14 +376,14 @@ export default function App() {
       {!isReading && (
         <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden md:flex items-center gap-2 p-2 bg-background/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(48,51,49,0.12)] border border-outline-variant/10 rounded-2xl">
         <button 
-          onClick={() => setView({ type: 'dashboard' })}
+          onClick={() => navigateTo({ type: 'dashboard' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}>import_contacts</span>
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Library</span>
         </button>
         <button 
-          onClick={() => setView({ type: 'add' })}
+          onClick={() => navigateTo({ type: 'add' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'add' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'add' ? "'FILL' 1" : "'FILL' 0" }}>add_circle</span>
@@ -334,7 +399,7 @@ export default function App() {
         </button>
         <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>
         <button 
-          onClick={() => setView({ type: 'reflection-index' })}
+          onClick={() => navigateTo({ type: 'reflection-index' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
           <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'reflection-index' || view.type === 'reflection' ? "'FILL' 1" : "'FILL' 0" }}>auto_stories</span>
