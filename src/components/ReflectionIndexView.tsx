@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { motion } from 'motion/react';
+import { BookOpen, Search, ChevronRight } from 'lucide-react';
+
 
 interface ReflectionIndexViewProps {
   onSelectBook: (bookId: number) => void;
@@ -42,7 +44,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
       {/* Header */}
       <header className="space-y-4">
         <div className="flex items-center gap-3 text-on-surface-variant">
-          <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
+          <BookOpen className="w-6 h-6" />
           <span className="text-[10px] uppercase tracking-widest font-bold font-label">The Archivist</span>
         </div>
         <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
@@ -51,7 +53,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
         {/* Search Bar */}
         <div className="flex items-center gap-3 px-4 py-3 bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl focus-within:border-primary/30 transition-all group">
-          <span className="material-symbols-outlined text-outline-variant group-focus-within:text-primary transition-colors text-xl">search</span>
+          <Search className="w-6 h-6" />
           <input 
             type="text"
             value={searchQuery}
@@ -131,7 +133,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                        <span className="material-symbols-outlined text-xl">menu_book</span>
+                        <BookOpen className="w-6 h-6" />
                       </div>
                     )}
                   </div>
@@ -150,7 +152,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
                   {/* Action Reveal */}
                   <div className="flex items-center text-outline-variant group-hover:text-primary transition-colors shrink-0">
-                    <span className="material-symbols-outlined text-xl sm:text-2xl" style={{ fontVariationSettings: "'FILL' 0" }}>chevron_right</span>
+                    <ChevronRight className="w-6 h-6" />
                   </div>
                 </motion.button>
               ))}

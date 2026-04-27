@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
+import { Target, Edit, TrendingUp, Activity, Brain, Star, Settings, Quote, HelpCircle } from 'lucide-react';
+
 
 interface InsightsData {
   stats: {
@@ -247,7 +249,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       <div className="mb-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-headline italic text-lg text-primary flex items-center gap-3">
-            <span className="material-symbols-outlined text-secondary">target</span>
+            <Target className="w-6 h-6" />
             Annual Reading Goal
           </h3>
           <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{new Date().getFullYear()}</span>
@@ -321,7 +323,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     }}
                     className="flex-shrink-0 px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5"
                   >
-                    <span className="material-symbols-outlined text-[14px]">edit</span>
+                    <Edit className="w-6 h-6" />
                     Edit
                   </button>
                 </div>
@@ -350,7 +352,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
             <div className="flex justify-between items-center mb-10">
               <h3 className="font-headline italic text-xl flex items-center gap-3">
-                <span className="material-symbols-outlined text-primary">trending_up</span>
+                <TrendingUp className="w-6 h-6" />
                 Reading Momentum
               </h3>
               <div className="flex items-center gap-3">
@@ -448,7 +450,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             <div className="flex justify-between items-center mb-10">
               <div className="min-w-0">
                 <h3 className="font-headline italic text-xl flex items-center gap-3">
-                  <span className="material-symbols-outlined text-tertiary">landscape</span>
+                  <Activity className="w-6 h-6" />
                   The Chronicle Wave
                 </h3>
                 <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Reading Journey</p>
@@ -579,7 +581,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           {/* Recent Wisdom */}
           <section className="space-y-4">
             <h3 className="font-headline italic text-lg flex items-center gap-3 text-tertiary">
-              <span className="material-symbols-outlined">psychology</span>
+              <Brain className="w-6 h-6" />
               Recent Wisdom
             </h3>
             <div className="space-y-4">
@@ -598,7 +600,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
                       {[...Array(5)].map((_, idx) => (
-                        <span key={idx} className={`material-symbols-outlined text-[12px] ${idx < r.rating ? 'text-primary' : 'text-outline-variant/30'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <Star className="w-6 h-6" />
                       ))}
                     </div>
                   </div>
@@ -615,7 +617,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           {/* Preferences Card */}
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
             <h3 className="font-headline italic text-lg mb-5 flex items-center gap-3 text-on-surface">
-              <span className="material-symbols-outlined text-primary">settings</span>
+              <Settings className="w-6 h-6" />
               Preferences
             </h3>
 
@@ -660,7 +662,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
           {/* Inspirational Quote */}
           <div className="p-6 text-center bg-secondary/5 rounded-2xl border border-secondary/10">
-             <span className="material-symbols-outlined text-secondary/40 text-3xl mb-3 block">format_quote</span>
+             <Quote className="w-6 h-6" />
              <p className="serif-text italic text-sm text-on-surface-variant leading-relaxed">
                "Reading is a conversation with the author. Your reflections are the continuation of that dialogue."
              </p>
@@ -707,7 +709,7 @@ function StatCard({
               title="Learn more"
               aria-label="More information"
             >
-              <span className="material-symbols-outlined text-[14px]">help</span>
+              <HelpCircle className="w-6 h-6" />
             </button>
 
             {showTooltip && (

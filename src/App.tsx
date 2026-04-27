@@ -16,6 +16,8 @@ import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import InsightsView from './components/InsightsView';
 import { Book } from './types';
+import { Calendar, X, ArrowLeft, Menu, Download, PlusCircle, Edit, BookOpen } from 'lucide-react';
+
 
 type View = 
   | { type: 'dashboard' }
@@ -274,7 +276,7 @@ export default function App() {
         >
           <div className="px-6 py-2.5 flex items-center justify-between max-w-5xl mx-auto">
             <div className="flex items-center gap-3">
-              <span className="material-symbols-outlined text-primary text-[18px]">event_note</span>
+              <Calendar className="w-6 h-6" />
               <div className="flex flex-col">
                 <span className="font-label text-[10px] font-semibold uppercase tracking-[0.12em] text-on-surface leading-none">Activity Alert</span>
                 <span className="font-label text-[11px] text-on-surface-variant mt-0.5">You haven’t logged progress today. Stay focused on your journey.</span>
@@ -284,7 +286,7 @@ export default function App() {
               onClick={() => setShowAlert(false)}
               className="text-on-surface-variant/60 hover:text-on-surface transition-colors"
             >
-              <span className="material-symbols-outlined text-lg">close</span>
+              <X className="w-6 h-6" />
             </button>
           </div>
         </motion.div>
@@ -306,14 +308,14 @@ export default function App() {
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
             >
-              <span className="material-symbols-outlined text-2xl">arrow_back</span>
+              <ArrowLeft className="w-6 h-6" />
             </button>
           ) : (
             <button 
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors md:hidden"
             >
-              <span className="material-symbols-outlined text-primary text-2xl cursor-pointer">menu</span>
+              <Menu className="w-6 h-6" />
             </button>
           )}
         </div>
@@ -393,14 +395,14 @@ export default function App() {
           onClick={() => navigateTo({ type: 'dashboard' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'dashboard' ? "'FILL' 1" : "'FILL' 0" }}>import_contacts</span>
+          <Download className="w-6 h-6" />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Library</span>
         </button>
         <button 
           onClick={() => navigateTo({ type: 'add' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'add' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'add' ? "'FILL' 1" : "'FILL' 0" }}>add_circle</span>
+          <PlusCircle className="w-6 h-6" />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Add New</span>
         </button>
         <button 
@@ -408,7 +410,7 @@ export default function App() {
           disabled={!currentFocus}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' || view.type === 'reader' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocus ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'log-progress' || view.type === 'reader' ? "'FILL' 1" : "'FILL' 0" }}>edit_note</span>
+          <Edit className="w-6 h-6" />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Log Progress</span>
         </button>
         <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>
@@ -416,7 +418,7 @@ export default function App() {
           onClick={() => navigateTo({ type: 'reflection-index' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: view.type === 'reflection-index' || view.type === 'reflection' ? "'FILL' 1" : "'FILL' 0" }}>auto_stories</span>
+          <BookOpen className="w-6 h-6" />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
         </button>
       </nav>

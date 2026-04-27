@@ -1,4 +1,6 @@
 import { motion, AnimatePresence } from 'motion/react';
+import { X } from 'lucide-react';
+
 
 interface SidebarProps {
   isOpen: boolean;
@@ -45,7 +47,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                   onClick={onClose}
                   className="p-2 text-on-surface-variant hover:text-on-surface transition-colors"
                 >
-                  <span className="material-symbols-outlined">close</span>
+                  <X className="w-6 h-6" />
                 </button>
               </div>
 

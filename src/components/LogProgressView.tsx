@@ -1,6 +1,8 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Book } from '../types';
 import SuccessView from './SuccessView';
+import { BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
+
 
 interface LogProgressViewProps {
   bookId: number;
@@ -97,7 +99,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
             <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
             <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-              <span className="material-symbols-outlined text-4xl">menu_book</span>
+              <BookOpen className="w-6 h-6" />
             </div>
           )}
         </div>
@@ -132,14 +134,14 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
                     onClick={() => adjustPage(1)}
                     className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
                   >
-                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_drop_up</span>
+                    <ChevronUp className="w-6 h-6" />
                   </button>
                   <button 
                     type="button" 
                     onClick={() => adjustPage(-1)}
                     className="text-outline-variant hover:text-primary transition-colors flex items-center justify-center h-6"
                   >
-                    <span className="material-symbols-outlined text-2xl" style={{ fontVariationSettings: "'FILL' 1" }}>arrow_drop_down</span>
+                    <ChevronDown className="w-6 h-6" />
                   </button>
                 </div>
                 

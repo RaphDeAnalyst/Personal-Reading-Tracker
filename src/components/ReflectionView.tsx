@@ -1,5 +1,7 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { BookDetail } from '../types';
+import { BookOpen, Info } from 'lucide-react';
+
 
 interface ReflectionViewProps {
   bookId: number;
@@ -142,7 +144,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
       <header className="flex flex-col gap-5">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-on-surface-variant">
-            <span className="material-symbols-outlined text-sm" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
+            <BookOpen className="w-6 h-6" />
             <span className="text-[10px] uppercase tracking-widest font-bold font-label">Deep Reading Session</span>
           </div>
         </div>
@@ -178,7 +180,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
 
       {/* Info Banner */}
       <div className="bg-tertiary/5 border border-tertiary/20 rounded-lg p-4 flex items-start gap-3">
-        <span className="material-symbols-outlined text-tertiary text-xl flex-shrink-0 mt-0.5">info</span>
+        <Info className="w-6 h-6" />
         <p className="text-sm text-on-surface-variant">
           <span className="font-bold text-tertiary">Tip:</span> The first field is the key—filling it marks this reflection as "archived." The other two fields are optional companions to deepen your synthesis.
         </p>

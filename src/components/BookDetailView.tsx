@@ -1,6 +1,8 @@
 import { useState, useEffect } from 'react';
 import { Book, Log, Reflection, BookDetail, Tag } from '../types';
 import TagSelector from './TagSelector';
+import { BookOpen, Trash2, CheckCircle, Clock, Star } from 'lucide-react';
+
 
 interface BookDetailViewProps {
   bookId: number;
@@ -143,7 +145,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 <img src={bookDetail.cover_url} alt={bookDetail.title} className="w-full h-full object-cover transition-transform duration-500 hover:scale-[1.02]" referrerPolicy="no-referrer" />
               ) : (
                 <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                  <span className="material-symbols-outlined text-[100px]">menu_book</span>
+                  <BookOpen className="w-6 h-6" />
                 </div>
               )}
             </div>
@@ -226,7 +228,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                   onClick={() => setShowDeleteConfirm(true)}
                   className="flex items-center gap-2 text-outline-variant hover:text-error transition-colors text-[10px] font-bold uppercase tracking-widest"
                 >
-                  <span className="material-symbols-outlined text-sm">delete</span>
+                  <Trash2 className="w-6 h-6" />
                   Decommission Volume
                 </button>
               ) : (
@@ -339,7 +341,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 onClick={() => onOpenReader(bookId)}
                 className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-primary text-on-primary rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
               >
-                <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform" style={{ fontVariationSettings: "'FILL' 1" }}>menu_book</span>
+                <BookOpen className="w-6 h-6" />
                 Open PDF Reader
               </button>
             )}
@@ -348,7 +350,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 onClick={handleMarkAsCompleted}
                 className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-on-surface text-surface rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
               >
-                <span className="material-symbols-outlined text-[24px] group-hover:scale-110 transition-transform" style={{ fontVariationSettings: "'FILL' 1" }}>check_circle</span>
+                <CheckCircle className="w-6 h-6" />
                 Mark as Completed
               </button>
             )}
@@ -357,7 +359,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                 onClick={() => onLogProgress(bookId)}
                 className="w-full flex items-center justify-center gap-2 px-6 py-4 border border-outline-variant/30 text-primary rounded-md font-semibold hover:bg-surface-container-low transition-colors"
               >
-                <span className="material-symbols-outlined text-[20px]">history_edu</span>
+                <Clock className="w-6 h-6" />
                 {bookDetail.status === 'COMPLETED' ? 'View Reading History' : 'Detailed Log'}
               </button>
             )}
@@ -416,7 +418,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                     <span className="text-[10px] uppercase tracking-widest font-bold text-outline-variant">Archived Reflection</span>
                     <div className="flex gap-0.5">
                       {[...Array(5)].map((_, i) => (
-                        <span key={i} className={`material-symbols-outlined text-[14px] ${i < (bookDetail.reflection?.rating || 0) ? 'text-primary' : 'text-outline-variant/30'}`} style={{ fontVariationSettings: "'FILL' 1" }}>star</span>
+                        <Star className="w-6 h-6" />
                       ))}
                     </div>
                   </div>

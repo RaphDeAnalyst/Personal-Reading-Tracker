@@ -1,5 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Book, ReadingGoal, Tag } from '../types';
+import { Book, Clock, Plus, BookOpen, Search, X, SearchX } from 'lucide-react';
+
 
 interface DashboardProps {
   onSelectBook: (id: number) => void;
@@ -133,7 +135,7 @@ function BookCard({ book, onSelect }: BookCardProps) {
               <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
             ) : (
               <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                <span className="material-symbols-outlined text-sm">book</span>
+                <Book className="w-6 h-6" />
               </div>
             )}
         </div>
@@ -295,7 +297,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
       {/* Today's Progress Section */}
       <section className="mb-10 flex items-center justify-between bg-surface-container-low/50 border border-outline-variant/10 rounded-xl px-4 py-3">
         <div className="flex items-center gap-3">
-          <span className="material-symbols-outlined text-tertiary">history_edu</span>
+          <Clock className="w-6 h-6" />
           <span className="font-label text-[12px] font-medium text-on-surface-variant tracking-wide">
             Today: <span className="text-on-surface font-semibold">{stats.pagesReadToday > 0 ? `${stats.pagesReadToday} pages read` : 'No reading logged today'}</span>
           </span>
@@ -314,7 +316,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           <div className="flex items-center justify-between mb-6">
             <span className="font-label text-on-surface-variant text-[0.75rem] uppercase tracking-widest font-semibold">Active Selection</span>
             <button onClick={onAddBook} className="flex items-center gap-1.5 text-primary hover:text-primary-dim transition-colors">
-              <span className="material-symbols-outlined text-sm">add</span>
+              <Plus className="w-6 h-6" />
               <span className="font-label text-[11px] font-semibold uppercase tracking-widest">New Entry</span>
             </button>
           </div>
@@ -330,7 +332,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                     <img src={currentBook.cover_url} alt={currentBook.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                   ) : (
                     <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                      <span className="material-symbols-outlined text-6xl">menu_book</span>
+                      <BookOpen className="w-6 h-6" />
                     </div>
                   )}
               </div>
@@ -359,7 +361,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                     onClick={() => currentBook && onLogCurrent(currentBook)}
                     className="w-full px-8 py-5 bg-primary text-on-primary rounded-xl font-label font-semibold text-sm tracking-[0.15em] uppercase hover:bg-primary-dim transition-all shadow-lg active:scale-[0.97] flex items-center justify-center gap-4 group"
                   >
-                    <span className="material-symbols-outlined text-[20px] transition-transform group-hover:translate-x-1">menu_book</span>
+                    <BookOpen className="w-6 h-6" />
                     Resume Reading
                   </button>
                 </div>
@@ -403,7 +405,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           </button>
         </div>
         <div className="flex items-center gap-2 w-full sm:w-auto px-4 py-2 bg-surface-container-low rounded-lg border border-outline-variant/5 group focus-within:border-primary/40 transition-all">
-          <span className="material-symbols-outlined text-outline-variant text-[20px] group-focus-within:text-primary transition-colors">search</span>
+          <Search className="w-6 h-6" />
           <input 
             type="text" 
             value={searchQuery}
@@ -413,7 +415,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           />
           {isSearching && (
             <button onClick={() => setSearchQuery('')} className="text-outline-variant hover:text-on-surface">
-              <span className="material-symbols-outlined text-sm">close</span>
+              <X className="w-6 h-6" />
             </button>
           )}
         </div>
@@ -491,7 +493,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             ))
           ) : (
             <div className="py-24 text-center border-2 border-dashed border-outline-variant/10 rounded-3xl bg-surface-container-low/20 animate-in zoom-in-95 duration-300">
-              <span className="material-symbols-outlined text-5xl text-outline-variant/30 mb-4">search_off</span>
+              <SearchX className="w-6 h-6" />
               <p className="font-headline italic text-2xl text-on-surface-variant">No matches in the archive.</p>
               <p className="text-sm text-outline-variant mt-2">" {searchQuery} " yielded no results. Try another volume or author.</p>
             </div>

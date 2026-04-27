@@ -1,14 +1,5 @@
 @import "tailwindcss";
 
-/* Material Symbols Outlined font from Google Fonts */
-@font-face {
-  font-family: 'Material Symbols Outlined';
-  font-style: normal;
-  font-weight: 100 700;
-  font-display: block;
-  src: url('https://fonts.gstatic.com/s/materialsymbolsoutlined/v226/kJEhBvYX7BznkSrUz8zAUodN7lQpOIFw5HeFQwZFNrk.woff2') format('woff2');
-}
-
 @theme {
   --font-headline: "Newsreader", "serif";
   --font-body: "Inter", "sans-serif";
@@ -145,17 +136,6 @@
 @layer components {
   .serif-text {
     @apply font-headline italic;
-  }
-  
-  .material-symbols-outlined {
-    font-family: 'Material Symbols Outlined', sans-serif;
-    font-variation-settings: 'FILL' 0, 'wght' 300, 'GRAD' 0, 'opsz' 24;
-    @apply inline-flex items-center justify-center leading-none;
-    min-width: 1em;
-    min-height: 1em;
-    text-rendering: optimizeLegibility;
-    -webkit-font-smoothing: antialiased;
-    font-size: 1.5rem;
   }
 
   .progress-bar-fill {

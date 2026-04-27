@@ -1,5 +1,7 @@
 import { useEffect, useState } from 'react';
 import { BookDetail } from '../types';
+import { BookOpen, Clock, ArrowRight } from 'lucide-react';
+
 
 interface SuccessViewProps {
   bookId: number;
@@ -40,7 +42,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
         <div className="relative inline-block">
           <div className="absolute inset-0 bg-tertiary-container rounded-full blur-3xl opacity-20 transform -translate-y-4"></div>
           <div className="relative flex items-center justify-center w-24 h-24 mx-auto bg-surface-container-low rounded-full shadow-sm border border-outline-variant/5">
-            <span className="material-symbols-outlined text-tertiary text-4xl" style={{ fontVariationSettings: "'FILL' 1" }}>auto_stories</span>
+            <BookOpen className="w-6 h-6" />
           </div>
           {/* Decorative Bookmark Element */}
           <div className="absolute -right-2 top-0 w-4 h-12 bg-tertiary opacity-80 rounded-b-sm shadow-sm transition-transform duration-500 hover:scale-y-110"></div>
@@ -66,7 +68,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
         {/* The Reading Card: Achievement Summary */}
         <div className="bg-surface-container-low/60 backdrop-blur-sm rounded-xl p-8 space-y-6 text-left relative overflow-hidden group border border-outline-variant/10 shadow-sm">
           <div className="absolute top-0 right-0 p-4 transition-transform group-hover:rotate-12 duration-500">
-            <span className="material-symbols-outlined text-tertiary opacity-20 text-6xl" style={{ fontVariationSettings: "'FILL' 1" }}>history_edu</span>
+            <Clock className="w-6 h-6" />
           </div>
           
           <div className="relative z-10">
@@ -77,7 +79,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
                   <img src={bookDetail.cover_url} alt={bookDetail.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                 ) : (
                   <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                    <span className="material-symbols-outlined text-2xl">menu_book</span>
+                    <BookOpen className="w-6 h-6" />
                   </div>
                 )}
               </div>
@@ -109,7 +111,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
             className="text-on-surface-variant font-body text-sm font-semibold hover:text-on-surface transition-colors border-b border-transparent hover:border-outline-variant pb-1 flex items-center gap-2 group"
           >
             View Reflection Journal
-            <span className="material-symbols-outlined text-sm group-hover:translate-x-1 transition-transform">arrow_forward</span>
+            <ArrowRight className="w-6 h-6" />
           </button>
         </div>
       </div>
