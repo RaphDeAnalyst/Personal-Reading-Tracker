@@ -6,6 +6,7 @@ import { fileURLToPath } from "url";
 import Database from "better-sqlite3";
 import multer from "multer";
 import dotenv from "dotenv";
+import { initializeBackupManager } from "./backupManager.js";
 
 dotenv.config();
 
@@ -43,7 +44,14 @@ async function startServer() {
   try {
     console.log(`Initializing database connection at ${DB_PATH}...`);
     db = new Database(DB_PATH);
-    
+
+    // Initialize backup manager
+    initializeBackupManager({
+      dbPath: DB_PATH,
+      backupDir: path.join(process.cwd(), "backups"),
+      retentionDays: 30,
+    });
+
     const app = express();
 
     console.log("Running database migrations...");
