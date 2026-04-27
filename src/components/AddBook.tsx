@@ -386,17 +386,18 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
               />
             </div>
 
-            {/* New Metadata Fields: ISBN, Publisher, Year */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+            {/* Metadata Section */}
+            <div className="space-y-8">
+              {/* ISBN with Lookup Button */}
               <div className="group">
-                <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="isbn">
+                <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-3 group-focus-within:text-primary transition-colors" htmlFor="isbn">
                   ISBN
                 </label>
-                <div className="flex gap-3">
-                  <input 
-                    className="form-input-line flex-1 text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
-                    id="isbn" 
-                    placeholder="978-0143126393" 
+                <div className="flex gap-3 items-end">
+                  <input
+                    className="form-input-line flex-1 text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent"
+                    id="isbn"
+                    placeholder="978-0143126393"
                     type="text"
                     value={formData.isbn}
                     onChange={e => setFormData({ ...formData, isbn: e.target.value })}
@@ -406,53 +407,57 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     type="button"
                     onClick={handleISBNLookup}
                     disabled={lookingUp || loading}
-                    className="px-3 py-1 rounded bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-2"
+                    className="px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                   >
                     <span className={`material-symbols-outlined text-sm ${lookingUp ? 'animate-spin' : ''}`}>
                       {lookingUp ? 'sync' : 'search'}
                     </span>
-                    {lookingUp ? '...' : 'Lookup'}
+                    {lookingUp ? 'Looking...' : 'Lookup'}
                   </button>
                 </div>
               </div>
-              <div className="group">
-                <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="publisher">
-                  Publisher
-                </label>
-                <input 
-                  className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
-                  id="publisher" 
-                  placeholder="Penguin Books" 
-                  type="text"
-                  value={formData.publisher}
-                  onChange={e => setFormData({ ...formData, publisher: e.target.value })}
-                />
-              </div>
-            </div>
 
-            <div className="group">
-              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="year">
-                Publication Year
-              </label>
-              <input 
-                className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent" 
-                id="year" 
-                placeholder="2001" 
-                type="number"
-                value={formData.publication_year}
-                onChange={e => setFormData({ ...formData, publication_year: e.target.value })}
-              />
+              {/* Publisher and Year in grid */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                <div className="group">
+                  <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-3 group-focus-within:text-primary transition-colors" htmlFor="publisher">
+                    Publisher
+                  </label>
+                  <input
+                    className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent placeholder:text-outline-variant/50 focus:placeholder:opacity-0 transition-all"
+                    id="publisher"
+                    placeholder="Penguin Books"
+                    type="text"
+                    value={formData.publisher}
+                    onChange={e => setFormData({ ...formData, publisher: e.target.value })}
+                  />
+                </div>
+
+                <div className="group">
+                  <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-3 group-focus-within:text-primary transition-colors" htmlFor="year">
+                    Publication Year
+                  </label>
+                  <input
+                    className="form-input-line w-full text-sm font-body border-b border-outline-variant/20 focus:border-primary outline-none py-2 bg-transparent placeholder:text-outline-variant/50 focus:placeholder:opacity-0 transition-all"
+                    id="year"
+                    placeholder="2001"
+                    type="number"
+                    value={formData.publication_year}
+                    onChange={e => setFormData({ ...formData, publication_year: e.target.value })}
+                  />
+                </div>
+              </div>
             </div>
 
             {/* Field: Description */}
             <div className="group">
-              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-2 group-focus-within:text-primary transition-colors" htmlFor="description">
-                Description
+              <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-3 group-focus-within:text-primary transition-colors" htmlFor="description">
+                Description <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
               </label>
-              <textarea 
-                className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body focus:outline-none focus:ring-1 focus:ring-primary transition-all min-h-[120px]" 
-                id="description" 
-                placeholder="Brief summary or thoughts on this volume..." 
+              <textarea
+                className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body placeholder:text-outline-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 transition-all min-h-[120px] resize-none"
+                id="description"
+                placeholder="Brief summary or thoughts on this volume..."
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
               />
@@ -463,34 +468,39 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
               <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
                 Book Cover <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
               </label>
-              <div className="flex gap-6 items-center">
-                 <div className="relative">
-                  <input 
-                    accept="image/*" 
-                    className="hidden" 
-                    id="cover_file" 
+              <div className="space-y-4">
+                <div className="relative">
+                  <input
+                    accept="image/*"
+                    className="hidden"
+                    id="cover_file"
                     type="file"
                     onChange={handleFileChange}
                   />
-                  <label 
-                    className="flex items-center gap-3 px-6 py-3 rounded-lg cursor-pointer transition-all border border-outline-variant/30 hover:border-primary/40 bg-surface-container-low/30 text-xs font-label uppercase tracking-widest"
+                  <label
+                    className="flex items-center justify-center gap-3 px-6 py-4 rounded-lg cursor-pointer transition-all border border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low/50 bg-surface-container-low/30 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface"
                     htmlFor="cover_file"
                   >
                     <span className="material-symbols-outlined text-sm">upload_file</span>
-                    {selectedFile ? 'Change Cover' : 'Upload Cover'}
+                    {selectedFile ? 'Change Cover Image' : 'Upload Cover Image'}
                   </label>
                 </div>
                 {formData.mode === 'PHYSICAL' && (
-                  <input 
-                    className="flex-1 bg-transparent border-b border-outline-variant/20 focus:border-primary outline-none py-2 text-xs font-body placeholder:text-outline-variant/40" 
-                    placeholder="or paste Cover URL..." 
-                    type="text"
-                    value={formData.cover_url}
-                    onChange={e => {
-                      setFormData({ ...formData, cover_url: e.target.value });
-                      setSelectedFile(null);
-                    }}
-                  />
+                  <div className="group/url">
+                    <label className="block text-[8px] uppercase tracking-[0.15em] text-on-surface-variant/60 mb-1.5 group-focus-within/url:text-primary transition-colors">
+                      Or Paste URL
+                    </label>
+                    <input
+                      className="w-full bg-transparent border-b border-outline-variant/20 focus:border-primary outline-none py-2 text-sm font-body placeholder:text-outline-variant/40 focus:placeholder:opacity-0 transition-all"
+                      placeholder="https://example.com/cover.jpg"
+                      type="text"
+                      value={formData.cover_url}
+                      onChange={e => {
+                        setFormData({ ...formData, cover_url: e.target.value });
+                        setSelectedFile(null);
+                      }}
+                    />
+                  </div>
                 )}
               </div>
             </div>
@@ -498,9 +508,9 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             {/* Tags Section */}
             <div className="group">
               <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
-                Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
+                Genre Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional - Organize your archive)</span>
               </label>
-              <TagSelector 
+              <TagSelector
                 selectedTagIds={selectedTagIds}
                 onToggleTag={handleToggleTag}
                 showToast={showToast}
@@ -508,21 +518,22 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             </div>
 
             {/* CTA Section */}
-            <div className="pt-8 flex flex-col sm:flex-row items-center gap-8">
-              <button 
+            <div className="pt-8 border-t border-outline-variant/10 flex flex-col sm:flex-row items-center gap-4">
+              <button
                 disabled={loading || extracting}
-                className="w-full sm:w-auto bg-primary text-on-primary px-12 py-5 rounded-xl font-label text-[12px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-3 hover:bg-primary-dim active:scale-95 transition-all shadow-lg disabled:opacity-50" 
+                className="w-full sm:w-auto bg-primary text-on-primary px-8 sm:px-12 py-4 rounded-lg font-label text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-3 hover:bg-primary-dim active:scale-95 transition-all shadow-lg shadow-primary/10 disabled:opacity-50 disabled:cursor-not-allowed"
                 type="submit"
               >
-                <span>{loading ? 'Archiving Volume...' : `Add ${formData.mode === 'DIGITAL' ? 'Digital' : 'Physical'} Book`}</span>
+                <span>{loading ? 'Archiving...' : `Add to Archive`}</span>
                 {!loading && <span className="material-symbols-outlined text-sm">auto_stories</span>}
               </button>
-              <button 
+              <button
                 type="button"
                 onClick={onBack}
-                className="text-xs uppercase tracking-widest text-on-surface-variant hover:text-primary transition-colors font-bold"
+                className="w-full sm:w-auto px-8 py-4 rounded-lg border border-outline-variant/30 bg-surface-container-low/50 text-on-surface font-label text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2 hover:border-outline-variant/60 hover:bg-surface-container transition-all active:scale-95"
               >
-                Cancel Archive
+                <span className="material-symbols-outlined text-sm">close</span>
+                Discard
               </button>
             </div>
           </div>
