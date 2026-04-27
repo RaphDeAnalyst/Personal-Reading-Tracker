@@ -251,14 +251,16 @@ export default function App() {
     <div className={`min-h-screen bg-background text-on-surface font-body selection:bg-primary-container font-pref-${fontPreference} ${theme} ${isReading ? 'overflow-hidden' : ''}`}>
       {!isReading && (
         <>
-          <Sidebar 
-            isOpen={isSidebarOpen} 
-            onClose={() => setIsSidebarOpen(!isSidebarOpen)} 
+          <Sidebar
+            isOpen={isSidebarOpen}
+            onClose={() => setIsSidebarOpen(!isSidebarOpen)}
             onNavigate={(v) => {
               navigateTo(v);
               setIsSidebarOpen(false);
             }}
             currentView={view.type}
+            theme={theme}
+            onToggleTheme={toggleTheme}
           />
 
       {/* Top Alert Banner */}
@@ -321,14 +323,26 @@ export default function App() {
         >
           The Archivist
         </h1>
-        <button 
-          onClick={() => navigateTo({ type: 'insights' })}
-          className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
-        >
-          <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'insights' ? "'FILL' 1" : "'FILL' 0" }}>
-            analytics
-          </span>
-        </button>
+        <div className="flex items-center gap-2">
+          <button
+            onClick={() => navigateTo({ type: 'insights' })}
+            className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
+            title="View insights"
+          >
+            <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'insights' ? "'FILL' 1" : "'FILL' 0" }}>
+              analytics
+            </span>
+          </button>
+          <button
+            onClick={toggleTheme}
+            className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container-low"
+            title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+          >
+            <span className="material-symbols-outlined text-[22px]">
+              {theme === 'light' ? 'dark_mode' : 'light_mode'}
+            </span>
+          </button>
+        </div>
       </header>
         </>
       )}

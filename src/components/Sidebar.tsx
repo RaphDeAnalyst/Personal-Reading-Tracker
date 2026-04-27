@@ -5,13 +5,16 @@ interface SidebarProps {
   onClose: () => void;
   onNavigate: (view: any) => void;
   currentView: string;
+  theme?: 'light' | 'dark';
+  onToggleTheme?: () => void;
 }
 
-export default function Sidebar({ isOpen, onClose, onNavigate, currentView }: SidebarProps) {
+export default function Sidebar({ isOpen, onClose, onNavigate, currentView, theme = 'light', onToggleTheme }: SidebarProps) {
   const navItems = [
     { id: 'dashboard', label: 'Library', icon: 'import_contacts' },
     { id: 'add', label: 'Add New Book', icon: 'add_circle' },
     { id: 'reflection-index', label: 'Reflections', icon: 'auto_stories' },
+    { id: 'insights', label: 'Insights', icon: 'analytics' },
   ];
 
   return (
@@ -47,40 +50,60 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView }: Si
               </div>
 
               <nav className="flex-1 py-8 px-4 space-y-2">
-                {navItems.map((item) => (
-                  <button
-                    key={item.id}
-                    disabled={item.disabled}
-                    onClick={() => {
-                      if (!item.disabled) {
-                        onNavigate({ type: item.id });
-                        onClose();
-                      }
-                    }}
-                    className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
-                      currentView === item.id 
-                        ? 'bg-primary/5 text-primary' 
-                        : item.disabled 
-                          ? 'opacity-40 cursor-not-allowed' 
-                          : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
-                    }`}
-                  >
-                    <span 
-                      className="material-symbols-outlined text-[22px]"
-                      style={{ fontVariationSettings: currentView === item.id ? "'FILL' 1" : "'FILL' 0" }}
+                {navItems.map((item, index) => (
+                  <div key={item.id}>
+                    <button
+                      disabled={item.disabled}
+                      onClick={() => {
+                        if (!item.disabled) {
+                          onNavigate({ type: item.id });
+                          onClose();
+                        }
+                      }}
+                      className={`w-full flex items-center gap-4 px-4 py-3.5 rounded-xl transition-all duration-200 group ${
+                        currentView === item.id
+                          ? 'bg-primary/5 text-primary'
+                          : item.disabled
+                            ? 'opacity-40 cursor-not-allowed'
+                            : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
+                      }`}
                     >
-                      {item.icon}
-                    </span>
-                    <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">
-                      {item.label}
-                    </span>
-                    {currentView === item.id && (
-                      <motion.div 
-                        layoutId="active-pill"
-                        className="ml-auto w-1 h-4 bg-primary rounded-full"
-                      />
+                      <span
+                        className="material-symbols-outlined text-[22px]"
+                        style={{ fontVariationSettings: currentView === item.id ? "'FILL' 1" : "'FILL' 0" }}
+                      >
+                        {item.icon}
+                      </span>
+                      <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">
+                        {item.label}
+                      </span>
+                      {currentView === item.id && (
+                        <motion.div
+                          layoutId="active-pill"
+                          className="ml-auto w-1 h-4 bg-primary rounded-full"
+                        />
+                      )}
+                    </button>
+
+                    {/* Theme Toggle under Insights */}
+                    {item.id === 'insights' && onToggleTheme && (
+                      <motion.button
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: 0.1 }}
+                        onClick={onToggleTheme}
+                        className="w-full flex items-center gap-4 px-6 py-2.5 rounded-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low/60 hover:text-on-surface ml-2 mt-1 text-[12px]"
+                        title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
+                      >
+                        <span className="material-symbols-outlined text-[18px]">
+                          {theme === 'light' ? 'dark_mode' : 'light_mode'}
+                        </span>
+                        <span className="font-label text-[10px] uppercase tracking-widest font-medium">
+                          {theme === 'light' ? 'Dark' : 'Light'}
+                        </span>
+                      </motion.button>
                     )}
-                  </button>
+                  </div>
                 ))}
               </nav>
 
