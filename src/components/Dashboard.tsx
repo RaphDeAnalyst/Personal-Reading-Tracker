@@ -160,7 +160,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
   const [books, setBooks] = useState<Book[]>([]);
   const [stats, setStats] = useState({ pagesReadToday: 0, totalBooks: 0, completedBooks: 0 });
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
-  const [activeTab, setActiveTab] = useState<'now' | 'next' | 'completed'>('now');
+  const [activeTab, setActiveTab] = useState<'all' | 'now' | 'next' | 'completed'>('all');
   const [searchQuery, setSearchQuery] = useState('');
   const [sortOrder, setSortOrder] = useState<'date' | 'title' | 'author' | 'progress'>('date');
   const [allTags, setAllTags] = useState<Tag[]>([]);
@@ -230,7 +230,9 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
   // Tab filtering (only used when not searching)
   const tabBooks = books.filter(b => {
     const pages = b.current_page || 0;
-    const tabMatch = activeTab === 'now'
+    const tabMatch = activeTab === 'all'
+      ? true
+      : activeTab === 'now'
       ? b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED'
       : activeTab === 'next'
       ? (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && pages === 0)
@@ -375,19 +377,25 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
       {/* Search & Filter */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-6 mb-8 border-b border-outline-variant/10 pb-4 sticky top-16 bg-background z-30 pt-4">
         <div className={`flex gap-8 text-on-surface-variant font-label text-sm overflow-x-auto no-scrollbar w-full sm:w-auto pb-2 sm:pb-0 transition-opacity duration-300 ${isSearching ? 'opacity-30 pointer-events-none' : ''}`}>
-          <button 
+          <button
+            onClick={() => setActiveTab('all')}
+            className={`whitespace-nowrap ${activeTab === 'all' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
+          >
+            All Books
+          </button>
+          <button
             onClick={() => setActiveTab('now')}
             className={`whitespace-nowrap ${activeTab === 'now' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
             Now Reading
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('next')}
             className={`whitespace-nowrap ${activeTab === 'next' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
             Up Next
           </button>
-          <button 
+          <button
             onClick={() => setActiveTab('completed')}
             className={`whitespace-nowrap ${activeTab === 'completed' ? 'text-on-surface font-semibold underline underline-offset-[14px] decoration-primary decoration-2' : 'hover:text-on-surface'} transition-all`}
           >
