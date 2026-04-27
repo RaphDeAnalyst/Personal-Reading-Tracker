@@ -1,6 +1,5 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
-import { Target, Edit, TrendingUp, Activity, Brain, Star, Settings, Quote, HelpCircle } from 'lucide-react';
 
 
 interface InsightsData {
@@ -26,7 +25,7 @@ function DistributionChart({ title, data, icon, total }: { title: string; data: 
   return (
     <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 shadow-sm flex-1">
       <h3 className="font-headline italic text-xl flex items-center gap-3 mb-8">
-        <span className="material-symbols-outlined text-tertiary">{icon}</span>
+        <span className="text-[20px]">{icon}</span>
         {title}
       </h3>
       <div className="space-y-6">
@@ -202,8 +201,8 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           className="group relative flex items-center gap-3 px-4 py-2.5 rounded-xl bg-surface-container-low border border-outline-variant/10 text-on-surface-variant hover:text-on-surface hover:bg-surface-container-high transition-all shadow-sm active:scale-95"
           title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
         >
-          <span className="material-symbols-outlined text-[20px]" style={{ fontVariationSettings: "'FILL' 1" }}>
-            {theme === 'light' ? 'dark_mode' : 'light_mode'}
+          <span className="text-[18px]">
+            {theme === 'light' ? '🌙' : '☀️'}
           </span>
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">
             {theme === 'light' ? 'Dark' : 'Light'} Mode
@@ -216,14 +215,14 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         <StatCard
           label="Books Completed"
           value={data.stats.completedBooks}
-          icon="auto_stories"
+          icon="📖"
           color="text-primary"
           tooltip="Total books you've finished reading"
         />
         <StatCard
           label="Wisdom Index"
           value={`${wisdomIndex}%`}
-          icon="lightbulb"
+          icon="💡"
           color="text-tertiary"
           description="Books with reflections"
           tooltip="Percentage of completed books with written reflections—a measure of thoughtful engagement"
@@ -231,7 +230,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         <StatCard
           label="Avg. Days to Complete"
           value={avgTimeToComplete}
-          icon="schedule"
+          icon="⏱"
           color="text-secondary"
           description="Sustainable pace"
           tooltip="Average days to finish a book based on your reading speed—reflects sustainable, mindful pacing"
@@ -239,7 +238,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         <StatCard
           label="Total Reflections"
           value={data.stats.totalReflections}
-          icon="psychology"
+          icon="🧠"
           color="text-primary"
           tooltip="Total reflection entries written across all your books"
         />
@@ -249,7 +248,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       <div className="mb-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
         <div className="flex items-center justify-between mb-4">
           <h3 className="font-headline italic text-lg text-primary flex items-center gap-3">
-            <Target className="w-6 h-6" />
+            
             Annual Reading Goal
           </h3>
           <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{new Date().getFullYear()}</span>
@@ -323,7 +322,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     }}
                     className="flex-shrink-0 px-3 py-1 text-[9px] font-bold uppercase tracking-widest rounded-lg bg-surface-container-high text-on-surface-variant hover:text-on-surface transition-colors flex items-center gap-1.5"
                   >
-                    <Edit className="w-6 h-6" />
+                    
                     Edit
                   </button>
                 </div>
@@ -352,7 +351,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
             <div className="flex justify-between items-center mb-10">
               <h3 className="font-headline italic text-xl flex items-center gap-3">
-                <TrendingUp className="w-6 h-6" />
+                
                 Reading Momentum
               </h3>
               <div className="flex items-center gap-3">
@@ -415,7 +414,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
                           {isPeak && (
                              <div className="absolute -top-6 left-1/2 -translate-x-1/2 text-primary animate-bounce">
-                               <span className="material-symbols-outlined text-[14px]">stat_3</span>
+                               <span className="text-[14px]">⭐</span>
                              </div>
                           )}
                         </motion.div>
@@ -450,7 +449,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             <div className="flex justify-between items-center mb-10">
               <div className="min-w-0">
                 <h3 className="font-headline italic text-xl flex items-center gap-3">
-                  <Activity className="w-6 h-6" />
+                  
                   The Chronicle Wave
                 </h3>
                 <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Reading Journey</p>
@@ -564,13 +563,13 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             <DistributionChart
               title="Genre Topography"
               data={data.genreDistribution}
-              icon="category"
+              icon="📂"
               total={data.stats.completedBooks || 1}
             />
             <DistributionChart
               title="Author Influence"
               data={data.authorDistribution.map(a => ({ name: a.author, count: a.count }))}
-              icon="pen_size_2"
+              icon="✍"
               total={data.stats.completedBooks || 1}
             />
           </div>
@@ -581,7 +580,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           {/* Recent Wisdom */}
           <section className="space-y-4">
             <h3 className="font-headline italic text-lg flex items-center gap-3 text-tertiary">
-              <Brain className="w-6 h-6" />
+              
               Recent Wisdom
             </h3>
             <div className="space-y-4">
@@ -600,7 +599,9 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     </div>
                     <div className="flex gap-0.5 flex-shrink-0">
                       {[...Array(5)].map((_, idx) => (
-                        <Star className="w-6 h-6" />
+                        <span key={idx} className="text-xs">
+                          {idx < (r.rating || 0) ? '★' : '☆'}
+                        </span>
                       ))}
                     </div>
                   </div>
@@ -617,7 +618,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           {/* Preferences Card */}
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
             <h3 className="font-headline italic text-lg mb-5 flex items-center gap-3 text-on-surface">
-              <Settings className="w-6 h-6" />
+              
               Preferences
             </h3>
 
@@ -662,7 +663,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
           {/* Inspirational Quote */}
           <div className="p-6 text-center bg-secondary/5 rounded-2xl border border-secondary/10">
-             <Quote className="w-6 h-6" />
+             
              <p className="serif-text italic text-sm text-on-surface-variant leading-relaxed">
                "Reading is a conversation with the author. Your reflections are the continuation of that dialogue."
              </p>
@@ -700,7 +701,7 @@ function StatCard({
     >
       <div className="flex items-start justify-between gap-2">
         <div className={`w-8 h-8 sm:w-10 sm:h-10 rounded-full bg-surface-container-high flex items-center justify-center flex-shrink-0 ${color}`}>
-          <span className="material-symbols-outlined text-[18px] sm:text-[20px]">{icon}</span>
+          <span className="text-[18px] sm:text-[20px]">{icon}</span>
         </div>
         {tooltip && (
           <div className="relative flex-shrink-0">
@@ -709,7 +710,7 @@ function StatCard({
               title="Learn more"
               aria-label="More information"
             >
-              <HelpCircle className="w-6 h-6" />
+              
             </button>
 
             {showTooltip && (

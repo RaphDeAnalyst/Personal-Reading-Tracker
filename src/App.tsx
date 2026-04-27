@@ -16,7 +16,6 @@ import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import InsightsView from './components/InsightsView';
 import { Book as BookType } from './types';
-import { Calendar, X, ArrowLeft, Menu, Download, PlusCircle, Edit, BookOpen, Book } from 'lucide-react';
 
 
 type View = 
@@ -276,17 +275,16 @@ export default function App() {
         >
           <div className="px-6 py-2.5 flex items-center justify-between max-w-5xl mx-auto">
             <div className="flex items-center gap-3">
-              <Calendar className="w-6 h-6" />
               <div className="flex flex-col">
                 <span className="font-label text-[10px] font-semibold uppercase tracking-[0.12em] text-on-surface leading-none">Activity Alert</span>
                 <span className="font-label text-[11px] text-on-surface-variant mt-0.5">You haven’t logged progress today. Stay focused on your journey.</span>
               </div>
             </div>
-            <button 
+            <button
               onClick={() => setShowAlert(false)}
               className="text-on-surface-variant/60 hover:text-on-surface transition-colors"
             >
-              <X className="w-6 h-6" />
+              ✕
             </button>
           </div>
         </motion.div>
@@ -297,7 +295,7 @@ export default function App() {
       <header className={`fixed top-0 left-0 w-full z-50 flex items-center justify-between px-6 h-16 bg-background/95 backdrop-blur-sm border-b border-outline-variant/5 transition-all duration-300`}>
         <div className="flex items-center gap-4">
           {view.type !== 'dashboard' ? (
-            <button 
+            <button
               onClick={() => {
                 if (view.type === 'detail') navigateTo({ type: 'dashboard' });
                 else if (view.type === 'reflection') navigateTo({ type: 'reflection-index' });
@@ -308,14 +306,14 @@ export default function App() {
               }}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors"
             >
-              <ArrowLeft className="w-6 h-6" />
+              ←
             </button>
           ) : (
-            <button 
+            <button
               onClick={() => setIsSidebarOpen(true)}
               className="p-2 -ml-2 text-on-surface hover:bg-surface-container-low rounded-lg transition-colors md:hidden"
             >
-              <Menu className="w-6 h-6" />
+              ☰
             </button>
           )}
         </div>
@@ -331,18 +329,14 @@ export default function App() {
             className={`w-10 h-10 rounded-full flex items-center justify-center transition-all ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-md' : 'text-on-surface-variant hover:bg-surface-container-low'}`}
             title="View insights"
           >
-            <span className="material-symbols-outlined text-[24px]" style={{ fontVariationSettings: view.type === 'insights' ? "'FILL' 1" : "'FILL' 0" }}>
-              analytics
-            </span>
+            📊
           </button>
           <button
             onClick={toggleTheme}
             className="w-10 h-10 rounded-full flex items-center justify-center transition-all text-on-surface-variant hover:bg-surface-container-low"
             title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
           >
-            <span className="material-symbols-outlined text-[22px]">
-              {theme === 'light' ? 'dark_mode' : 'light_mode'}
-            </span>
+            {theme === 'light' ? '🌙' : '☀️'}
           </button>
         </div>
       </header>
@@ -379,8 +373,8 @@ export default function App() {
                 'bg-surface-container-high text-on-surface border-outline-variant/20'
               }`}
             >
-              <span className="material-symbols-outlined text-[18px]">
-                {toast.type === 'success' ? 'check_circle' : toast.type === 'error' ? 'error' : 'info'}
+              <span>
+                {toast.type === 'success' ? '✓' : toast.type === 'error' ? '✕' : 'ℹ'}
               </span>
               {toast.message}
             </motion.div>
@@ -391,35 +385,31 @@ export default function App() {
       {/* Responsive Navigation DOCK (Desktop: Visible | Mobile: Hidden) */}
       {!isReading && (
         <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 z-50 hidden md:flex items-center gap-2 p-2 bg-background/70 backdrop-blur-xl shadow-[0_8px_32px_rgba(48,51,49,0.12)] border border-outline-variant/10 rounded-2xl">
-        <button 
+        <button
           onClick={() => navigateTo({ type: 'dashboard' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'dashboard' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <Download className="w-6 h-6" />
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Library</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">📚 Library</span>
         </button>
-        <button 
+        <button
           onClick={() => navigateTo({ type: 'add' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'add' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <PlusCircle className="w-6 h-6" />
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Add New</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">➕ Add New</span>
         </button>
-        <button 
+        <button
           onClick={() => currentFocus && handleResumeReading(currentFocus)}
           disabled={!currentFocus}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' || view.type === 'reader' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocus ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <Edit className="w-6 h-6" />
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Log Progress</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">✎ Log Progress</span>
         </button>
         <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>
-        <button 
+        <button
           onClick={() => navigateTo({ type: 'reflection-index' })}
           className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'reflection-index' || view.type === 'reflection' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
         >
-          <BookOpen className="w-6 h-6" />
-          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">💭 Reflections</span>
         </button>
       </nav>
       )}

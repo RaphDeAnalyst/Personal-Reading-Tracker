@@ -1,7 +1,6 @@
 import { useState, useEffect, FormEvent } from 'react';
 import { Book } from '../types';
 import SuccessView from './SuccessView';
-import { BookOpen, ChevronUp, ChevronDown } from 'lucide-react';
 
 
 interface LogProgressViewProps {
@@ -98,8 +97,8 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
           {book.cover_url ? (
             <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
           ) : (
-            <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-              <BookOpen className="w-6 h-6" />
+            <div className="w-full h-full flex items-center justify-center text-outline-variant/30 text-4xl">
+              📖
             </div>
           )}
         </div>

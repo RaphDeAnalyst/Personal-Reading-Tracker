@@ -1,7 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Book } from '../types';
 import { motion } from 'motion/react';
-import { BookOpen, Search, ChevronRight } from 'lucide-react';
 
 
 interface ReflectionIndexViewProps {
@@ -44,7 +43,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
       {/* Header */}
       <header className="space-y-4">
         <div className="flex items-center gap-3 text-on-surface-variant">
-          <BookOpen className="w-6 h-6" />
+          
           <span className="text-[10px] uppercase tracking-widest font-bold font-label">The Archivist</span>
         </div>
         <h2 className="font-headline text-4xl sm:text-5xl md:text-6xl text-primary leading-tight break-words">
@@ -53,7 +52,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
         {/* Search Bar */}
         <div className="flex items-center gap-3 px-4 py-3 bg-surface-container-low/50 backdrop-blur-sm border border-outline-variant/10 rounded-xl focus-within:border-primary/30 transition-all group">
-          <Search className="w-6 h-6" />
+          
           <input 
             type="text"
             value={searchQuery}
@@ -94,8 +93,8 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
         <section className="flex flex-col gap-6">
           {displayBooks.length === 0 ? (
             <div className="py-20 text-center border border-dashed border-outline-variant/30 rounded-2xl bg-surface-container-low/30">
-              <span className="material-symbols-outlined text-4xl text-outline-variant/40 mb-4">
-                {searchQuery ? 'search_off' : (activeTab === 'pending' ? 'history_edu' : 'edit_off')}
+              <span className="text-4xl text-outline-variant/40 mb-4 block">
+                {searchQuery ? '🔍' : (activeTab === 'pending' ? '📚' : '✎')}
               </span>
               <p className="font-headline italic text-xl text-on-surface-variant">
                 {searchQuery ? 'No matched records.' : (activeTab === 'pending' ? 'All volumes have been synthesized.' : 'Your archive of reflections is currently empty.')}
@@ -133,7 +132,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
                       <img src={book.cover_url} alt={book.title} className="w-full h-full object-cover" referrerPolicy="no-referrer" />
                     ) : (
                       <div className="w-full h-full flex items-center justify-center text-outline-variant/30">
-                        <BookOpen className="w-6 h-6" />
+                        
                       </div>
                     )}
                   </div>
@@ -152,7 +151,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
                   {/* Action Reveal */}
                   <div className="flex items-center text-outline-variant group-hover:text-primary transition-colors shrink-0">
-                    <ChevronRight className="w-6 h-6" />
+                    
                   </div>
                 </motion.button>
               ))}

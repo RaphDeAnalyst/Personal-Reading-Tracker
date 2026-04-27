@@ -1,5 +1,4 @@
 import { motion, AnimatePresence } from 'motion/react';
-import { X } from 'lucide-react';
 
 
 interface SidebarProps {
@@ -13,10 +12,10 @@ interface SidebarProps {
 
 export default function Sidebar({ isOpen, onClose, onNavigate, currentView, theme = 'light', onToggleTheme }: SidebarProps) {
   const navItems = [
-    { id: 'dashboard', label: 'Library', icon: 'import_contacts' },
-    { id: 'add', label: 'Add New Book', icon: 'add_circle' },
-    { id: 'reflection-index', label: 'Reflections', icon: 'auto_stories' },
-    { id: 'insights', label: 'Insights', icon: 'analytics' },
+    { id: 'dashboard', label: 'Library', icon: '📚' },
+    { id: 'add', label: 'Add New Book', icon: '➕' },
+    { id: 'reflection-index', label: 'Reflections', icon: '💭' },
+    { id: 'insights', label: 'Insights', icon: '📊' },
   ];
 
   return (
@@ -43,11 +42,11 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
             >
               <div className="p-6 h-16 flex items-center justify-between border-b border-outline-variant/5">
                 <span className="font-headline italic text-xl tracking-tight text-on-surface">Archivist</span>
-                <button 
+                <button
                   onClick={onClose}
                   className="p-2 text-on-surface-variant hover:text-on-surface transition-colors"
                 >
-                  <X className="w-6 h-6" />
+                  ✕
                 </button>
               </div>
 
@@ -70,10 +69,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                             : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'
                       }`}
                     >
-                      <span
-                        className="material-symbols-outlined text-[22px]"
-                        style={{ fontVariationSettings: currentView === item.id ? "'FILL' 1" : "'FILL' 0" }}
-                      >
+                      <span className="text-[20px]">
                         {item.icon}
                       </span>
                       <span className="font-label text-xs uppercase tracking-[0.15em] font-semibold">
@@ -97,8 +93,8 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                         className="w-full flex items-center gap-4 px-6 py-2.5 rounded-lg transition-all duration-200 text-on-surface-variant hover:bg-surface-container-low/60 hover:text-on-surface ml-2 mt-1 text-[12px]"
                         title={`Switch to ${theme === 'light' ? 'Dark' : 'Light'} Mode`}
                       >
-                        <span className="material-symbols-outlined text-[18px]">
-                          {theme === 'light' ? 'dark_mode' : 'light_mode'}
+                        <span className="text-[16px]">
+                          {theme === 'light' ? '🌙' : '☀️'}
                         </span>
                         <span className="font-label text-[10px] uppercase tracking-widest font-medium">
                           {theme === 'light' ? 'Dark' : 'Light'}

@@ -3,7 +3,6 @@ import * as pdfjsLib from 'pdfjs-dist';
 import pdfWorker from 'pdfjs-dist/build/pdf.worker.min.mjs?url';
 import { Tag } from '../types';
 import TagSelector from './TagSelector';
-import { Book, FileText, Upload, BookOpen, X } from 'lucide-react';
 
 
 // Configure PDF.js worker
@@ -255,8 +254,8 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 />
               ) : (
                 <div className="text-center">
-                  <span className={`material-symbols-outlined text-4xl mb-2 transition-colors ${extracting ? 'animate-pulse text-tertiary' : 'text-outline-variant/40'}`}>
-                    {extracting ? 'sync_saved_locally' : 'auto_stories'}
+                  <span className={`text-4xl mb-2 transition-colors ${extracting ? 'animate-pulse text-tertiary' : 'text-outline-variant/40'}`}>
+                    {extracting ? '⟳' : '📖'}
                   </span>
                   <p className="text-[10px] uppercase tracking-widest text-outline-variant font-medium">
                     {extracting ? 'Analyzing Volume...' : 'Cover Preview'}
@@ -283,7 +282,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                   onClick={() => setFormData({ ...formData, mode: 'PHYSICAL' })}
                   className={`flex-1 p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.mode === 'PHYSICAL' ? 'bg-primary/5 border-primary shadow-sm' : 'bg-surface border-outline-variant/20 hover:border-primary/40'}`}
                 >
-                  <Book className="w-6 h-6" />
+                  
                   <span className="text-[10px] uppercase tracking-widest font-bold">Physical</span>
                 </button>
                 <button 
@@ -291,7 +290,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                   onClick={() => setFormData({ ...formData, mode: 'DIGITAL' })}
                   className={`flex-1 p-4 rounded-xl border transition-all flex flex-col items-center gap-2 ${formData.mode === 'DIGITAL' ? 'bg-primary/5 border-primary shadow-sm' : 'bg-surface border-outline-variant/20 hover:border-primary/40'}`}
                 >
-                  <FileText className="w-6 h-6" />
+                  
                   <span className="text-[10px] uppercase tracking-widest font-bold">Digital</span>
                 </button>
               </div>
@@ -317,8 +316,8 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     }`}
                     htmlFor="digital_file"
                   >
-                    <span className={`material-symbols-outlined text-3xl mb-3 transition-colors ${selectedPDF ? 'text-tertiary' : 'text-outline-variant'}`}>
-                      {extracting ? 'cached' : (selectedPDF ? 'description' : 'cloud_upload')}
+                    <span className={`text-3xl mb-3 transition-colors ${selectedPDF ? 'text-tertiary' : 'text-outline-variant'}`}>
+                      {extracting ? '⟳' : (selectedPDF ? '📄' : '☁')}
                     </span>
                     <p className="text-sm font-headline text-on-surface mb-1">
                       {extracting ? 'Synthesizing metadata...' : (selectedPDF ? selectedPDF.name : 'Upload PDF')}
@@ -411,8 +410,8 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     disabled={lookingUp || loading}
                     className="px-4 py-2.5 rounded-lg bg-primary/10 text-primary text-[10px] font-bold uppercase tracking-widest hover:bg-primary/20 transition-all disabled:opacity-50 flex items-center gap-2 whitespace-nowrap"
                   >
-                    <span className={`material-symbols-outlined text-sm ${lookingUp ? 'animate-spin' : ''}`}>
-                      {lookingUp ? 'sync' : 'search'}
+                    <span className={`${lookingUp ? 'animate-spin' : ''}`}>
+                      {lookingUp ? '⟳' : '🔍'}
                     </span>
                     {lookingUp ? 'Looking...' : 'Lookup'}
                   </button>
@@ -483,7 +482,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                     className="flex items-center justify-center gap-3 px-6 py-4 rounded-lg cursor-pointer transition-all border border-outline-variant/30 hover:border-primary/40 hover:bg-surface-container-low/50 bg-surface-container-low/30 text-xs font-label uppercase tracking-widest text-on-surface-variant hover:text-on-surface"
                     htmlFor="cover_file"
                   >
-                    <Upload className="w-6 h-6" />
+                    
                     {selectedFile ? 'Change Cover Image' : 'Upload Cover Image'}
                   </label>
                 </div>
@@ -527,14 +526,12 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 type="submit"
               >
                 <span>{loading ? 'Archiving...' : `Add to Archive`}</span>
-                {!loading && <BookOpen className="w-6 h-6" />}
               </button>
               <button
                 type="button"
                 onClick={onBack}
                 className="w-full sm:w-auto px-8 py-4 rounded-lg border border-outline-variant/30 bg-surface-container-low/50 text-on-surface font-label text-[11px] uppercase tracking-[0.2em] font-bold flex items-center justify-center gap-2 hover:border-outline-variant/60 hover:bg-surface-container transition-all active:scale-95"
               >
-                <X className="w-6 h-6" />
                 Discard
               </button>
             </div>
