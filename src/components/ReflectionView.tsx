@@ -62,6 +62,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
   const [hoverRating, setHoverRating] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
+  const [showLearningTip, setShowLearningTip] = useState(false);
 
   const activeSet = PROMPT_SETS[activeSetIndex];
 
@@ -175,18 +176,47 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
         </p>
       </header>
 
+      {/* Info Banner */}
+      <div className="bg-tertiary/5 border border-tertiary/20 rounded-lg p-4 flex items-start gap-3">
+        <span className="material-symbols-outlined text-tertiary text-xl flex-shrink-0 mt-0.5">info</span>
+        <p className="text-sm text-on-surface-variant">
+          <span className="font-bold text-tertiary">Tip:</span> The first field is the key—filling it marks this reflection as "archived." The other two fields are optional companions to deepen your synthesis.
+        </p>
+      </div>
+
       {/* Reflection Prompts */}
       <div className="flex flex-col gap-28">
         {/* Prompt 1 */}
         <div className="relative group">
           <div className="flex flex-col gap-6">
-            <label className="font-headline text-2xl text-primary flex items-center gap-4">
-              <span className="text-tertiary opacity-40 italic">01.</span>
-              {activeSet.prompts[0]}
-            </label>
+            <div className="flex items-center gap-4">
+              <label className="font-headline text-2xl text-primary flex items-center gap-4">
+                <span className="text-tertiary opacity-40 italic">01.</span>
+                {activeSet.prompts[0]}
+              </label>
+              <div
+                className="relative"
+                onMouseEnter={() => setShowLearningTip(true)}
+                onMouseLeave={() => setShowLearningTip(false)}
+              >
+                <button
+                  className="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center text-on-surface-variant hover:text-primary hover:bg-surface-container-highest transition-colors text-sm font-bold"
+                  aria-label="Learn more about this field"
+                >
+                  ?
+                </button>
+                {showLearningTip && (
+                  <div className="absolute -top-24 -right-2 z-50 bg-on-surface text-surface rounded-lg p-3 shadow-lg min-w-[260px] text-[10px] leading-relaxed font-label">
+                    <p className="font-bold mb-1.5">📌 Key Field</p>
+                    <p>Filling this field moves your book to "My Reflections" tab in the journal. The other fields are optional but encouraged.</p>
+                    <div className="absolute top-full right-2 w-2 h-2 bg-on-surface transform rotate-45"></div>
+                  </div>
+                )}
+              </div>
+            </div>
             <div className="relative px-1">
-              <textarea 
-                className="w-full bg-transparent border-none focus:ring-0 p-0 text-xl font-headline leading-relaxed text-on-surface placeholder:opacity-50 min-h-[140px] resize-none" 
+              <textarea
+                className="w-full bg-transparent border-none focus:ring-0 p-0 text-xl font-headline leading-relaxed text-on-surface placeholder:opacity-50 min-h-[140px] resize-none"
                 placeholder={activeSet.placeholders[0]}
                 value={learning}
                 onChange={e => setLearning(e.target.value)}
