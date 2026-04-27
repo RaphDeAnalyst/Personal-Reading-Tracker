@@ -23,6 +23,7 @@ export interface Book {
   created_at: string;
   has_reflection?: boolean;
   is_full_reflection?: boolean;
+  tags?: Tag[];
 }
 
 export interface ReadingLog {

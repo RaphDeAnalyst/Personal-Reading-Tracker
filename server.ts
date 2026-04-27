@@ -239,16 +239,24 @@ async function startServer() {
     try {
       console.log("Archive: Fetching volumes...");
       const books = db.prepare(`
-        SELECT b.*, 
+        SELECT b.*,
         (SELECT COUNT(*) FROM reflections r WHERE r.book_id = b.id AND r.learning IS NOT NULL AND r.learning != '') as is_full_reflection,
-        (SELECT COUNT(*) FROM reflections r WHERE r.book_id = b.id) as has_reflection 
-        FROM books b 
+        (SELECT COUNT(*) FROM reflections r WHERE r.book_id = b.id) as has_reflection,
+        json_group_array(json_object('id', t.id, 'name', t.name)) as tags
+        FROM books b
+        LEFT JOIN book_tags bt ON b.id = bt.book_id
+        LEFT JOIN tags t ON bt.tag_id = t.id
+        GROUP BY b.id
         ORDER BY b.created_at DESC
-      `).all();
-      
-      // Convert 1/0 counts to booleans for the client if needed, 
-      // but the client logic books.filter(b => b.is_full_reflection) will work with 1/0.
-      res.json(books);
+      `).all() as any[];
+
+      // Parse tags JSON and filter out null entries
+      const processedBooks = books.map(b => ({
+        ...b,
+        tags: b.tags ? JSON.parse(b.tags).filter((t: any) => t && t.id !== null) : []
+      }));
+
+      res.json(processedBooks);
     } catch (error) {
       console.error("Archive Error: Failed to fetch books:", error);
       res.status(500).json({ error: "Internal server error" });
@@ -690,6 +698,13 @@ async function startServer() {
       const activeDays = activeDaysResult?.activeDays || 0;
       const consistencyScore = Math.round((activeDays / 30) * 100);
 
+      // 11. Reflection dates (for wave chart markers)
+      const reflectionDates = db.prepare(`
+        SELECT DISTINCT strftime('%Y-%m-%d', created_at) as date
+        FROM reflections
+        ORDER BY date DESC
+      `).all() as { date: string }[];
+
       let consistencyLevel = "Wandering";
       if (consistencyScore > 80) consistencyLevel = "Unyielding";
       else if (consistencyScore > 60) consistencyLevel = "Dedicated";
@@ -709,7 +724,8 @@ async function startServer() {
         trend: last35Days,
         recentReflections,
         genreDistribution,
-        authorDistribution
+        authorDistribution,
+        reflectionDates: reflectionDates.map(r => r.date)
       });
     } catch (error) {
       console.error("Insights Error:", error);

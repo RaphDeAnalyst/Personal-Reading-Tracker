@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, ReadingGoal } from '../types';
+import { Book, ReadingGoal, Tag } from '../types';
 
 interface DashboardProps {
   onSelectBook: (id: number) => void;
@@ -162,22 +162,34 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
   const [currentBook, setCurrentBook] = useState<Book | null>(null);
   const [activeTab, setActiveTab] = useState<'now' | 'next' | 'completed'>('now');
   const [searchQuery, setSearchQuery] = useState('');
+  const [sortOrder, setSortOrder] = useState<'date' | 'title' | 'author' | 'progress'>('date');
+  const [allTags, setAllTags] = useState<Tag[]>([]);
+  const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchData = async () => {
       setLoading(true);
       try {
-        const booksRes = await fetch('/api/books');
+        const [booksRes, tagsRes, statsRes] = await Promise.all([
+          fetch('/api/books'),
+          fetch('/api/tags'),
+          fetch('/api/dashboard/status')
+        ]);
+
         if (!booksRes.ok) throw new Error(`Books fetch failed: ${booksRes.status}`);
-        
+
         const booksData: Book[] = await booksRes.json();
         setBooks(booksData);
-        
+
         const active = booksData.find(b => b.status === 'IN_PROGRESS' && (b.current_page || 0) > 0);
         setCurrentBook(active || null);
 
-        const statsRes = await fetch('/api/dashboard/status');
+        if (tagsRes.ok) {
+          const tagsData: Tag[] = await tagsRes.json();
+          setAllTags(tagsData);
+        }
+
         if (statsRes.ok) {
           const statsData = await statsRes.json();
           setStats({
@@ -203,25 +215,58 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
   const isSearching = searchQuery.trim().length > 0;
 
   // Global search filtering
-  const searchResults = books.filter(b => 
-    b.title.toLowerCase().includes(searchQuery.toLowerCase()) || 
+  const searchResults = books.filter(b =>
+    b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
     (b.author || '').toLowerCase().includes(searchQuery.toLowerCase())
   );
+
+  // Tag filtering helper
+  const matchesTags = (book: Book) => {
+    if (selectedTagIds.length === 0) return true;
+    const bookTagIds = (book.tags || []).map(t => t.id);
+    return selectedTagIds.some(tagId => bookTagIds.includes(tagId));
+  };
 
   // Tab filtering (only used when not searching)
   const tabBooks = books.filter(b => {
     const pages = b.current_page || 0;
-    if (activeTab === 'now') {
-      return b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED';
-    }
-    if (activeTab === 'next') {
-      return (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && pages === 0);
-    }
-    if (activeTab === 'completed') {
-      return b.status === 'COMPLETED';
-    }
-    return false;
+    const tabMatch = activeTab === 'now'
+      ? b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED'
+      : activeTab === 'next'
+      ? (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && pages === 0)
+      : activeTab === 'completed'
+      ? b.status === 'COMPLETED'
+      : false;
+
+    return tabMatch && matchesTags(b);
   });
+
+  // Sort function
+  const applySorting = (booksToSort: Book[]) => {
+    const sorted = [...booksToSort];
+    switch (sortOrder) {
+      case 'title':
+        sorted.sort((a, b) => a.title.toLowerCase().localeCompare(b.title.toLowerCase()));
+        break;
+      case 'author':
+        sorted.sort((a, b) => (a.author || '').toLowerCase().localeCompare((b.author || '').toLowerCase()));
+        break;
+      case 'progress':
+        sorted.sort((a, b) => {
+          const progressA = (a.current_page || 0) / a.total_pages;
+          const progressB = (b.current_page || 0) / b.total_pages;
+          return progressB - progressA; // Descending (highest progress first)
+        });
+        break;
+      case 'date':
+      default:
+        sorted.sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+        break;
+    }
+    return sorted;
+  };
+
+  const sortedTabBooks = applySorting(tabBooks);
 
   const getGroupedResults = () => {
     const groups = {
@@ -366,6 +411,61 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
         </div>
       </div>
 
+      {/* Sort Controls & Tag Filters - Show only when not searching */}
+      {!isSearching && (
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-2">
+            <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Sort by:</span>
+            <select
+              value={sortOrder}
+              onChange={(e) => setSortOrder(e.target.value as 'date' | 'title' | 'author' | 'progress')}
+              className="px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-[11px] font-label uppercase tracking-widest text-on-surface-variant focus:outline-none focus:border-primary/40 transition-colors cursor-pointer"
+            >
+              <option value="date">Date Added</option>
+              <option value="title">Title (A–Z)</option>
+              <option value="author">Author (A–Z)</option>
+              <option value="progress">Progress</option>
+            </select>
+          </div>
+
+          {/* Tag Filter Pills */}
+          {allTags.length > 0 && (
+            <div className="flex flex-wrap items-center gap-2">
+              <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">Filter by tag:</span>
+              <div className="flex flex-wrap gap-2">
+                {allTags.map(tag => (
+                  <button
+                    key={tag.id}
+                    onClick={() => {
+                      setSelectedTagIds(prev =>
+                        prev.includes(tag.id)
+                          ? prev.filter(id => id !== tag.id)
+                          : [...prev, tag.id]
+                      );
+                    }}
+                    className={`px-3 py-1 rounded-full text-[10px] font-bold uppercase tracking-widest transition-all ${
+                      selectedTagIds.includes(tag.id)
+                        ? 'bg-primary text-on-primary shadow-sm'
+                        : 'bg-surface-container-low text-on-surface-variant hover:bg-surface-container-high border border-outline-variant/10'
+                    }`}
+                  >
+                    {tag.name}
+                  </button>
+                ))}
+                {selectedTagIds.length > 0 && (
+                  <button
+                    onClick={() => setSelectedTagIds([])}
+                    className="px-2 py-1 text-[9px] text-outline-variant hover:text-on-surface transition-colors uppercase tracking-widest font-bold"
+                  >
+                    Clear
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+        </div>
+      )}
+
       {/* Book Rendering Logic */}
       <div className="space-y-16">
         {isSearching ? (
@@ -390,9 +490,9 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           )
         ) : (
           /* Regular Tab View */
-          tabBooks.length > 0 ? (
+          sortedTabBooks.length > 0 ? (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-10 gap-y-12 animate-in fade-in duration-500">
-              {tabBooks.map(book => <BookCard key={book.id} book={book} onSelect={onSelectBook} />)}
+              {sortedTabBooks.map(book => <BookCard key={book.id} book={book} onSelect={onSelectBook} />)}
             </div>
           ) : (
             <div className="py-24 text-center border-2 border-dashed border-outline-variant/10 rounded-3xl bg-surface-container-low/20">

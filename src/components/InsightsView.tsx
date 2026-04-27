@@ -15,6 +15,7 @@ interface InsightsData {
   recentReflections: { content: string; rating: number; title: string; author: string }[];
   genreDistribution: { name: string; count: number }[];
   authorDistribution: { author: string; count: number }[];
+  reflectionDates?: string[];
 }
 
 function DistributionChart({ title, data, icon, total }: { title: string; data: { name: string; count: number }[]; icon: string, total: number }) {
@@ -65,17 +66,31 @@ interface InsightsViewProps {
   onToggleTheme: () => void;
 }
 
+interface GoalData {
+  year: number;
+  target_value: number;
+}
+
 export default function InsightsView({ showToast, fontPreference, onToggleFont, theme, onToggleTheme }: InsightsViewProps) {
   const [data, setData] = useState<InsightsData | null>(null);
+  const [goal, setGoal] = useState<GoalData | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchInsights = async () => {
       try {
-        const res = await fetch('/api/insights');
-        if (!res.ok) throw new Error("Failed to fetch insights");
-        const json = await res.json();
+        const currentYear = new Date().getFullYear();
+        const [insightsRes, goalRes] = await Promise.all([
+          fetch('/api/insights'),
+          fetch(`/api/goals/${currentYear}`)
+        ]);
+        if (!insightsRes.ok) throw new Error("Failed to fetch insights");
+        const json = await insightsRes.json();
         setData(json);
+        if (goalRes.ok) {
+          const goalJson = await goalRes.json();
+          setGoal(goalJson);
+        }
       } catch (err) {
         console.error(err);
         showToast?.("Could not gather your journey details", "error");
@@ -158,31 +173,66 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
 
       {/* Core Stats Grid */}
       <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
-        <StatCard 
-          label="Books Completed" 
-          value={data.stats.completedBooks} 
-          icon="auto_stories" 
+        <StatCard
+          label="Books Completed"
+          value={data.stats.completedBooks}
+          icon="auto_stories"
           color="text-primary"
         />
-        <StatCard 
-          label="Total Pages" 
-          value={data.stats.totalPagesRead} 
-          icon="menu_book" 
+        <StatCard
+          label="Total Pages"
+          value={data.stats.totalPagesRead}
+          icon="menu_book"
           color="text-tertiary"
         />
-        <StatCard 
-          label="Reading Streak" 
-          value={`${data.stats.streak} Days`} 
-          icon="local_fire_department" 
+        <StatCard
+          label="Reading Streak"
+          value={`${data.stats.streak} Days`}
+          icon="local_fire_department"
           color="text-orange-500"
         />
-        <StatCard 
-          label="Avg. Pages/Day" 
-          value={data.stats.averagePagesPerDay} 
-          icon="speed" 
+        <StatCard
+          label="Avg. Pages/Day"
+          value={data.stats.averagePagesPerDay}
+          icon="speed"
           color="text-secondary"
         />
       </div>
+
+      {/* Annual Goal Card */}
+      {goal && goal.target_value > 0 && (
+        <div className="mb-12 bg-surface-container-low p-6 rounded-2xl border border-outline-variant/10 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="font-headline italic text-lg text-primary flex items-center gap-3">
+              <span className="material-symbols-outlined text-secondary">target</span>
+              Annual Reading Goal
+            </h3>
+            <span className="font-label text-[10px] uppercase tracking-widest text-on-surface-variant font-bold">{goal.year}</span>
+          </div>
+          <div className="flex items-end gap-4">
+            <div className="flex-1">
+              <div className="flex justify-between items-center mb-2">
+                <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{data.stats.completedBooks} / {goal.target_value} books</span>
+                <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round((data.stats.completedBooks / goal.target_value) * 100)}%</span>
+              </div>
+              <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${Math.min((data.stats.completedBooks / goal.target_value) * 100, 100)}%` }}
+                  transition={{ duration: 1 }}
+                  className="h-full bg-secondary rounded-full relative"
+                >
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent to-white/10"></div>
+                </motion.div>
+              </div>
+            </div>
+            <span className="font-headline text-xl text-secondary font-medium min-w-fit">
+              {Math.max(goal.target_value - data.stats.completedBooks, 0)}
+            </span>
+          </div>
+          <p className="text-[11px] text-on-surface-variant italic mt-3">{goal.target_value - data.stats.completedBooks > 0 ? `${goal.target_value - data.stats.completedBooks} books remaining` : 'Goal achieved!'}</p>
+        </div>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Trend Section */}
@@ -365,20 +415,20 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                   {data.trend.slice(-30).map((t, i) => {
                     if (t.pages === 0) return null;
                     const pt = points[i];
-                    
-                    // Logic to see if a reflection exists for this day 
-                    const isWisdomPeak = t.pages > (maxPages * 0.8);
-                    
+
+                    // Check if this day has a reflection
+                    const hasReflection = data.reflectionDates?.includes(t.fullDate);
+
                     return (
                       <g key={i} className="group/node">
-                        <motion.circle 
+                        <motion.circle
                           initial={{ scale: 0 }}
                           animate={{ scale: 1 }}
                           transition={{ delay: 1.5 + (i * 0.02) }}
-                          cx={pt.x} 
-                          cy={pt.y} 
-                          r={isWisdomPeak ? "5" : "3"} 
-                          fill={isWisdomPeak ? "var(--color-tertiary)" : "var(--color-primary)"}
+                          cx={pt.x}
+                          cy={pt.y}
+                          r={hasReflection ? "5" : "3"}
+                          fill={hasReflection ? "var(--color-tertiary)" : "var(--color-primary)"}
                           stroke="var(--color-background)"
                           strokeWidth="1"
                           className="cursor-help"

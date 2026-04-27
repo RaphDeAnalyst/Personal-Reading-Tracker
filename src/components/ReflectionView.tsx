@@ -58,6 +58,8 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
   const [learning, setLearning] = useState('');
   const [application, setApplication] = useState('');
   const [disagreement, setDisagreement] = useState('');
+  const [rating, setRating] = useState(5);
+  const [hoverRating, setHoverRating] = useState(0);
   const [loading, setLoading] = useState(false);
   const [activeSetIndex, setActiveSetIndex] = useState(0);
 
@@ -72,6 +74,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
           setLearning(data.reflection.learning || '');
           setApplication(data.reflection.application || '');
           setDisagreement(data.reflection.disagreement || '');
+          setRating(data.reflection.rating || 5);
         }
       })
       .catch(err => {
@@ -94,12 +97,12 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
         await fetch(`/api/books/${bookId}/reflection`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            content, 
-            rating: 5, 
-            learning, 
-            application, 
-            disagreement 
+          body: JSON.stringify({
+            content,
+            rating,
+            learning,
+            application,
+            disagreement
           })
         });
       }
@@ -232,9 +235,32 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
         </div>
       </div>
 
-      {/* Meta Interaction */}
-      <section className="mt-8">
-        <button 
+      {/* Rating Selection */}
+      <section className="mt-8 flex flex-col gap-6">
+        <div className="flex flex-col gap-4">
+          <label className="font-headline text-xl text-primary">Rate This Volume</label>
+          <div className="flex gap-4 items-center">
+            <div className="flex gap-2">
+              {[1, 2, 3, 4, 5].map((star) => (
+                <button
+                  key={star}
+                  onClick={() => setRating(star)}
+                  onMouseEnter={() => setHoverRating(star)}
+                  onMouseLeave={() => setHoverRating(0)}
+                  className="text-3xl transition-all duration-200 hover:scale-110"
+                  aria-label={`Rate ${star} stars`}
+                >
+                  {star <= (hoverRating || rating) ? '★' : '☆'}
+                </button>
+              ))}
+            </div>
+            <span className="text-sm text-on-surface-variant font-label">
+              {rating === 1 ? 'Challenging' : rating === 2 ? 'Worthwhile' : rating === 3 ? 'Insightful' : rating === 4 ? 'Memorable' : 'Transformative'}
+            </span>
+          </div>
+        </div>
+
+        <button
           onClick={handleCompleteBook}
           disabled={loading}
           className="w-full bg-primary text-on-primary h-14 rounded-md font-label text-[11px] tracking-[0.15em] uppercase font-bold transition-all duration-300 hover:bg-primary-dim active:scale-[0.98] shadow-lg shadow-primary/10 disabled:opacity-50"
