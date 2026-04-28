@@ -4,7 +4,7 @@ import Icon from './Icon';
 import {
   Target, TrendingUp, Activity, Lightbulb, Settings,
   HelpCircle, Moon, Sun, Quote, Star, Edit, Brain,
-  Timer, FolderOpen, Pen, Loader2, Zap, BookOpen, Archive
+  Timer, FolderOpen, Pen, BookOpen, Archive, Calendar
 } from 'lucide-react';
 
 
@@ -63,7 +63,7 @@ function DistributionChart({ title, data, icon, total }: { title: string; data: 
             <div key={i} className="space-y-2">
               <div className="flex justify-between items-end">
                 <span className="font-label text-[10px] uppercase tracking-widest font-bold text-on-surface truncate pr-4">{item.name}</span>
-                <span className="font-label text-[9px] text-on-surface-variant font-bold">{item.count} Volumes</span>
+                <span className="font-label text-[9px] text-on-surface-variant font-bold">{percentage}% · {item.count} {item.count === 1 ? 'Vol.' : 'Vols.'}</span>
               </div>
               <div className="h-2 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
                 <motion.div
@@ -200,30 +200,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const dailyAverageThreshold = data.stats.averagePagesPerDay;
   const peakPages = Math.max(...last7Days.map(t => t.pages));
 
-  // Chronicle Wave Logic
-  const chartHeight = 120;
-  const chartWidth = 800;
-  const points = data.trend.slice(-30).map((t, i) => ({
-    x: (i / 29) * chartWidth,
-    y: chartHeight - (Math.min(t.pages / (Math.max(maxPages, 10)), 1) * chartHeight)
-  }));
-
-  const generatePath = (pts: {x: number, y: number}[]) => {
-    if (pts.length < 2) return "";
-    let d = `M ${pts[0].x},${pts[0].y}`;
-    for (let i = 0; i < pts.length - 1; i++) {
-      const curr = pts[i];
-      const next = pts[i+1];
-      const midX = (curr.x + next.x) / 2;
-      d += ` Q ${curr.x},${curr.y} ${midX},${(curr.y + next.y) / 2}`;
-    }
-    d += ` L ${pts[pts.length - 1].x},${pts[pts.length - 1].y}`;
-    return d;
-  };
-
-  const pathD = generatePath(points);
-  const areaD = `${pathD} L ${chartWidth},${chartHeight} L 0,${chartHeight} Z`;
-
   return (
     <div className="max-w-5xl mx-auto pb-24">
       {/* Header */}
@@ -245,7 +221,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       </header>
 
       {/* Wisdom-Focused Stats Grid - Replaces streak and avg pages */}
-      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4 sm:gap-6 mb-12">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4 sm:gap-6 mb-12">
         <StatCard
           label="Books Completed"
           value={data.stats.completedBooks}
@@ -262,7 +238,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           tooltip="Percentage of completed books with written reflections—a measure of thoughtful engagement"
         />
         <StatCard
-          label="Avg. Days to Complete"
+          label="Avg. Days to Finish"
           value={avgTimeToComplete}
           icon={Timer}
           color="text-secondary"
@@ -275,6 +251,14 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           icon={Brain}
           color="text-primary"
           tooltip="Total reflection entries written across all your books"
+        />
+        <StatCard
+          label="Consistency"
+          value={`${data.stats.consistencyScore}%`}
+          icon={Activity}
+          color="text-secondary"
+          description={data.stats.consistencyLevel}
+          tooltip="Percentage of the last 35 days where you read at least one page — a measure of reading regularity"
         />
       </div>
 
@@ -417,8 +401,8 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                   className="absolute left-11 right-0 border-t-2 border-dashed border-tertiary z-10 pointer-events-none"
                   style={{ bottom: `${Math.max((dailyAverageThreshold / maxPages) * 208 + 48, 56)}px` }}
                 >
-                  <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-opacity shadow-sm">
-                    Pace: {dailyAverageThreshold}p
+                  <div className="absolute -top-5 right-0 bg-tertiary text-on-tertiary text-[9px] font-bold px-2 py-0.5 rounded uppercase tracking-widest shadow-sm">
+                    Avg {Math.round(dailyAverageThreshold)}p/day
                   </div>
                 </div>
               )}
@@ -478,119 +462,11 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             </div>
           </section>
 
-          {/* Chronicle Wave */}
-          <section className="bg-surface-container-low p-6 sm:p-8 rounded-2xl border border-outline-variant/10 relative overflow-hidden">
-            <div className="flex justify-between items-center mb-10">
-              <div className="min-w-0">
-                <h3 className="font-headline italic text-xl flex items-center gap-3">
-                  <Icon icon={Activity} size="md" />
-                  The Chronicle Wave
-                </h3>
-                <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">30-Day Reading Journey</p>
-              </div>
-              <div className="flex items-center gap-4 bg-surface-container-high/50 px-5 py-2.5 rounded-xl border border-outline-variant/5">
-                <div className="text-right">
-                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency</span>
-                  <span className="serif-text text-xl text-primary font-medium">{data.stats.consistencyLevel}</span>
-                </div>
-                <div className="w-[1px] h-8 bg-outline-variant/20 mx-1"></div>
-                <div className="text-right">
-                  <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Score</span>
-                  <span className="serif-text text-xl text-tertiary font-medium">{data.stats.consistencyScore}%</span>
-                </div>
-              </div>
-            </div>
-
-            <div className="relative h-48 w-full mt-4">
-              <div className="absolute inset-0 flex flex-col justify-between pointer-events-none pb-6">
-                {[...Array(3)].map((_, i) => (
-                  <div key={i} className="w-full flex items-center gap-3">
-                    <span className="font-label text-[9px] font-bold text-on-surface w-8 text-right uppercase">
-                      {Math.round((maxPages * (1 - i / 2)))}p.
-                    </span>
-                    <div className="flex-1 h-[1px] bg-on-surface/20 border-t border-dashed border-on-surface/10"></div>
-                  </div>
-                ))}
-              </div>
-
-              <div className="absolute inset-0 pl-11 pb-6">
-                <svg
-                  viewBox={`0 0 ${chartWidth} ${chartHeight}`}
-                  preserveAspectRatio="none"
-                  className="w-full h-full overflow-visible"
-                >
-                  <defs>
-                    <linearGradient id="auraGradient" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="0%" stopColor="var(--color-primary)" stopOpacity="0.3" />
-                      <stop offset="100%" stopColor="var(--color-primary)" stopOpacity="0" />
-                    </linearGradient>
-                  </defs>
-
-                  <motion.path
-                    initial={{ opacity: 0 }}
-                    animate={{ opacity: 1 }}
-                    transition={{ duration: 1 }}
-                    d={areaD}
-                    fill="url(#auraGradient)"
-                  />
-
-                  <motion.path
-                    initial={{ pathLength: 0, opacity: 0 }}
-                    animate={{ pathLength: 1, opacity: 1 }}
-                    transition={{ duration: 1.5, ease: "easeInOut" }}
-                    d={pathD}
-                    fill="none"
-                    stroke="var(--color-primary)"
-                    strokeWidth="3"
-                    strokeLinecap="round"
-                  />
-
-                  {/* Wisdom Nodes - Days with reflections */}
-                  {data.trend.slice(-30).map((t, i) => {
-                    if (t.pages === 0) return null;
-                    const pt = points[i];
-                    const hasReflection = data.reflectionDates?.includes(t.fullDate);
-
-                    return (
-                      <g key={i} className="group/node">
-                        <motion.circle
-                          initial={{ scale: 0 }}
-                          animate={{ scale: 1 }}
-                          transition={{ delay: 1.5 + (i * 0.02) }}
-                          cx={pt.x}
-                          cy={pt.y}
-                          r={hasReflection ? "5" : "3"}
-                          fill={hasReflection ? "var(--color-tertiary)" : "var(--color-primary)"}
-                          stroke="var(--color-background)"
-                          strokeWidth="1"
-                          className="cursor-help"
-                        />
-                        <circle cx={pt.x} cy={pt.y} r="10" fill="transparent" className="cursor-help" />
-                      </g>
-                    );
-                  })}
-                </svg>
-              </div>
-            </div>
-
-            <div className="mt-8 pt-6 border-t border-on-surface/10 flex justify-between items-end">
-              <div className="flex gap-8">
-                 <div className="flex flex-col gap-1">
-                   <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">Timeframe</span>
-                   <span className="text-[11px] font-bold text-on-surface/80">Last 30 Days</span>
-                 </div>
-                 <div className="flex flex-col gap-1">
-                   <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">Total Depth</span>
-                   <span className="text-[11px] font-bold text-on-surface/80">{data.stats.totalPagesRead} Pages archived</span>
-                 </div>
-              </div>
-              <div className="text-right">
-                 <p className="font-headline italic text-sm text-on-surface max-w-[200px] leading-tight">
-                   Reflection deepens every reading. The journey matters more than the destination.
-                 </p>
-              </div>
-            </div>
-          </section>
+          <ReadingHeatmap
+            trend={data.trend}
+            consistencyScore={data.stats.consistencyScore}
+            consistencyLevel={data.stats.consistencyLevel}
+          />
 
           {/* Genre & Author Distribution */}
           <div className="flex flex-col md:flex-row gap-6">
@@ -836,6 +712,175 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         </div>
       </div>
     </div>
+  );
+}
+
+function ReadingHeatmap({
+  trend,
+  consistencyScore,
+  consistencyLevel,
+}: {
+  trend: { day: string; pages: number; fullDate: string; dayOfWeek: number }[];
+  consistencyScore: number;
+  consistencyLevel: string;
+}) {
+  const [hoveredCell, setHoveredCell] = useState<string | null>(null);
+
+  const maxPages = Math.max(...trend.map(t => t.pages), 1);
+  const datePageMap = new Map(trend.map(t => [t.fullDate, t.pages]));
+
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  const toLocalDateStr = (d: Date) =>
+    `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+  const todayStr = toLocalDateStr(today);
+
+  // Align grid start to the Monday of 3 weeks before the current week's Monday
+  const dow = today.getDay(); // 0 = Sunday
+  const daysSinceMonday = dow === 0 ? 6 : dow - 1;
+  const gridStart = new Date(today);
+  gridStart.setDate(today.getDate() - daysSinceMonday - 21);
+
+  const DAY_LABELS = ['Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat', 'Sun'];
+
+  type DayCell = {
+    dateStr: string;
+    date: Date;
+    pages: number;
+    isFuture: boolean;
+    isToday: boolean;
+  };
+
+  const weeks: DayCell[][] = Array.from({ length: 4 }, (_, w) =>
+    Array.from({ length: 7 }, (_, d) => {
+      const date = new Date(gridStart);
+      date.setDate(gridStart.getDate() + w * 7 + d);
+      const dateStr = toLocalDateStr(date);
+      const isFuture = date > today;
+      return {
+        dateStr,
+        date,
+        pages: isFuture ? 0 : (datePageMap.get(dateStr) ?? 0),
+        isFuture,
+        isToday: dateStr === todayStr,
+      };
+    })
+  );
+
+  const intensityClass = (pages: number, isFuture: boolean): string => {
+    if (isFuture) return 'bg-surface-container-highest opacity-25';
+    if (pages === 0) return 'bg-surface-container-highest';
+    const ratio = pages / maxPages;
+    if (ratio <= 0.25) return 'bg-primary/25';
+    if (ratio <= 0.5) return 'bg-primary/50';
+    if (ratio <= 0.75) return 'bg-primary/75';
+    return 'bg-primary';
+  };
+
+  const formatDate = (d: Date) =>
+    d.toLocaleDateString('en-US', { weekday: 'short', month: 'short', day: 'numeric' });
+
+  const LEGEND_STEPS = [
+    'bg-surface-container-highest',
+    'bg-primary/25',
+    'bg-primary/50',
+    'bg-primary/75',
+    'bg-primary',
+  ];
+
+  return (
+    <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10">
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
+        <div>
+          <h3 className="font-headline italic text-xl flex items-center gap-3">
+            <Icon icon={Calendar} size="md" />
+            Reading Rhythm
+          </h3>
+          <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">
+            28-Day Activity Calendar
+          </p>
+        </div>
+        <div className="flex items-center gap-4 bg-surface-container-high/50 px-5 py-2.5 rounded-xl border border-outline-variant/5">
+          <div className="text-right">
+            <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Consistency</span>
+            <span className="serif-text text-xl text-primary font-medium">{consistencyLevel}</span>
+          </div>
+          <div className="w-[1px] h-8 bg-outline-variant/20 mx-1" />
+          <div className="text-right">
+            <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Score</span>
+            <span className="serif-text text-xl text-tertiary font-medium">{consistencyScore}%</span>
+          </div>
+        </div>
+      </div>
+
+      {/* Day-of-week column headers */}
+      <div className="grid grid-cols-7 gap-1.5 mb-2">
+        {DAY_LABELS.map(label => (
+          <div key={label} className="text-center font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold py-0.5">
+            {label}
+          </div>
+        ))}
+      </div>
+
+      {/* Heatmap grid — 4 rows × 7 columns */}
+      <div className="space-y-1.5">
+        {weeks.map((week, wi) => (
+          <div key={wi} className="grid grid-cols-7 gap-1.5">
+            {week.map(cell => (
+              <div
+                key={cell.dateStr}
+                className={[
+                  'aspect-square rounded-md relative transition-transform duration-150',
+                  !cell.isFuture ? 'cursor-default hover:scale-110 hover:z-10' : 'cursor-default',
+                  intensityClass(cell.pages, cell.isFuture),
+                  cell.isToday ? 'ring-2 ring-primary ring-offset-1 ring-offset-surface-container-low' : '',
+                ].filter(Boolean).join(' ')}
+                onMouseEnter={() => !cell.isFuture && setHoveredCell(cell.dateStr)}
+                onMouseLeave={() => setHoveredCell(null)}
+              >
+                {/* Date number inside cell */}
+                <span className={[
+                  'absolute inset-0 flex items-end justify-center pb-0.5 font-label text-[7px] font-bold select-none',
+                  cell.pages > 0 && !cell.isFuture ? 'text-on-surface/50' : 'text-on-surface-variant/25',
+                ].join(' ')}>
+                  {cell.date.getDate()}
+                </span>
+
+                {/* Hover tooltip */}
+                {hoveredCell === cell.dateStr && (
+                  <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-2 z-50 pointer-events-none">
+                    <div className="bg-on-surface text-surface rounded-lg px-2.5 py-1.5 text-[10px] whitespace-nowrap shadow-xl font-label">
+                      <div className="font-bold">{formatDate(cell.date)}</div>
+                      <div className="opacity-75 mt-0.5">
+                        {cell.pages > 0 ? `${cell.pages} pages read` : 'No reading recorded'}
+                      </div>
+                    </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-on-surface" />
+                  </div>
+                )}
+              </div>
+            ))}
+          </div>
+        ))}
+      </div>
+
+      {/* Footer: legend + today indicator */}
+      <div className="flex items-center justify-between mt-6 pt-5 border-t border-outline-variant/10">
+        <div className="flex items-center gap-2">
+          <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">Less</span>
+          <div className="flex gap-1 items-center">
+            {LEGEND_STEPS.map((cls, i) => (
+              <div key={i} className={`w-3 h-3 rounded-sm ${cls}`} />
+            ))}
+          </div>
+          <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">More</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 rounded-sm ring-2 ring-primary ring-offset-1 ring-offset-surface-container-low bg-surface-container-low" />
+          <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">Today</span>
+        </div>
+      </div>
+    </section>
   );
 }
 
