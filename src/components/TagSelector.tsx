@@ -100,7 +100,7 @@ export default function TagSelector({
               }
             }}
             placeholder="Add new tag..."
-            className="flex-1 bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-xs focus:outline-none focus:ring-1 focus:ring-primary transition-all"
+            className="flex-1 bg-surface-container-low border border-outline-variant/30 rounded px-3 py-2 text-xs text-on-surface placeholder:text-outline-variant/50 focus:outline-none focus:ring-1 focus:ring-primary transition-all"
           />
           <button
             type="button"

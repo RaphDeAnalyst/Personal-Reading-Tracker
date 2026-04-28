@@ -123,7 +123,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
                   required
                   min={0}
                   max={book.total_pages}
-                  className="bg-transparent border-none p-0 focus:ring-0 serif-text text-6xl sm:text-7xl font-medium text-center placeholder:text-surface-container-highest w-32 sm:w-40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
+                  className="bg-transparent border-none p-0 focus:ring-0 serif-text text-6xl sm:text-7xl font-medium text-center text-on-surface placeholder:text-outline-variant/40 w-32 sm:w-40 outline-none [appearance:textfield] [&::-webkit-outer-spin-button]:appearance-none [&::-webkit-inner-spin-button]:appearance-none"
                   placeholder={(book.current_page || 0).toString()}
                   value={currentPage}
                   onChange={e => setCurrentPage(e.target.value)}

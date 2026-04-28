@@ -452,7 +452,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 Description <span className="lowercase italic opacity-60 text-[9px]">(Optional)</span>
               </label>
               <textarea
-                className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body placeholder:text-outline-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 transition-all min-h-[120px] resize-none"
+                className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body text-on-surface placeholder:text-outline-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 transition-all min-h-[120px] resize-none"
                 id="description"
                 placeholder="Brief summary or your thoughts on this book..."
                 value={formData.description}
@@ -488,7 +488,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                       Or Paste URL
                     </label>
                     <input
-                      className="w-full bg-transparent border-b border-outline-variant/20 focus:border-primary outline-none py-2 text-sm font-body placeholder:text-outline-variant/40 focus:placeholder:opacity-0 transition-all"
+                      className="w-full bg-transparent border-b border-outline-variant/20 focus:border-primary outline-none py-2 text-sm font-body text-on-surface placeholder:text-outline-variant/40 focus:placeholder:opacity-0 transition-all"
                       placeholder="https://example.com/cover.jpg"
                       type="text"
                       value={formData.cover_url}

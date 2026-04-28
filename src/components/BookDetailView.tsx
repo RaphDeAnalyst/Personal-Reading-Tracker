@@ -350,7 +350,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                         value={quickLogValue}
                         onChange={(e) => setQuickLogValue(e.target.value)}
                         onKeyDown={(e) => e.key === 'Enter' && handleQuickLog()}
-                        className="w-full bg-white border border-outline-variant/30 rounded-md px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-on-surface font-medium placeholder:text-outline-variant/60 placeholder:text-sm"
+                        className="w-full bg-surface-container-low border border-outline-variant/30 rounded-md px-4 py-3.5 focus:outline-none focus:ring-1 focus:ring-primary focus:border-primary transition-all text-on-surface font-medium placeholder:text-outline-variant/60 placeholder:text-sm"
                         placeholder="Pages read today"
                       />
                     </div>

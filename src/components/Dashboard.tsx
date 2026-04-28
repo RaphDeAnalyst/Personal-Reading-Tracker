@@ -412,7 +412,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
             placeholder="Search your library..."
-            className="bg-transparent border-none outline-none text-xs font-label w-full sm:w-48 placeholder:text-outline-variant/50"
+            className="bg-transparent border-none outline-none text-xs font-label text-on-surface w-full sm:w-48 placeholder:text-outline-variant/50"
           />
           {isSearching && (
             <button onClick={() => setSearchQuery('')} className="text-outline-variant hover:text-on-surface">
@@ -430,7 +430,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             <select
               value={sortOrder}
               onChange={(e) => setSortOrder(e.target.value as 'date' | 'title' | 'author' | 'progress')}
-              className="px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-[11px] font-label uppercase tracking-widest text-on-surface-variant focus:outline-none focus:border-primary/40 transition-colors cursor-pointer"
+              className="px-3 py-1.5 bg-surface-container-low border border-outline-variant/10 rounded-lg text-[11px] font-label uppercase tracking-widest text-on-surface focus:outline-none focus:border-primary/40 transition-colors cursor-pointer"
             >
               <option value="date">Date Added</option>
               <option value="title">Title (A–Z)</option>
