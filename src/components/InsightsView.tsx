@@ -101,6 +101,12 @@ interface GoalData {
   target_value: number;
 }
 
+interface MonthlyStatEntry {
+  year: number;
+  month: number;
+  count: number;
+}
+
 export default function InsightsView({ showToast, fontPreference, onToggleFont, theme, onToggleTheme, onSelectBook, onOpenReader, onWriteReflection }: InsightsViewProps) {
   const [data, setData] = useState<InsightsData | null>(null);
   const [goal, setGoal] = useState<GoalData | null>(null);
@@ -110,15 +116,20 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const [savingGoal, setSavingGoal] = useState(false);
   const [goalReadingList, setGoalReadingList] = useState<GoalReadingEntry[]>([]);
   const [selectedGoalYear, setSelectedGoalYear] = useState<number>(new Date().getFullYear());
+  const [monthlyStats, setMonthlyStats] = useState<MonthlyStatEntry[]>([]);
+  const [allGoals, setAllGoals] = useState<GoalData[]>([]);
+  const [selectedMonthlyYear, setSelectedMonthlyYear] = useState<number>(new Date().getFullYear());
 
   useEffect(() => {
     const fetchInsights = async () => {
       try {
         const currentYear = new Date().getFullYear();
-        const [insightsRes, goalRes, readingListRes] = await Promise.all([
+        const [insightsRes, goalRes, readingListRes, monthlyRes, allGoalsRes] = await Promise.all([
           fetch('/api/insights'),
           fetch(`/api/goals/${currentYear}`),
-          fetch('/api/goals/reading-list')
+          fetch('/api/goals/reading-list'),
+          fetch('/api/goals/monthly-stats'),
+          fetch('/api/goals/all'),
         ]);
         if (!insightsRes.ok) throw new Error("Failed to fetch insights");
         const json = await insightsRes.json();
@@ -131,6 +142,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         if (readingListRes.ok) {
           const readingListData = await readingListRes.json();
           setGoalReadingList(readingListData);
+        }
+        if (monthlyRes.ok) {
+          setMonthlyStats(await monthlyRes.json());
+        }
+        if (allGoalsRes.ok) {
+          setAllGoals(await allGoalsRes.json());
         }
       } catch (err) {
         console.error(err);
@@ -362,6 +379,14 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           </>
         )}
       </div>
+
+      {/* Monthly Books Read — full-width, between goal and charts */}
+      <MonthlyReadingChart
+        stats={monthlyStats}
+        goals={allGoals}
+        selectedYear={selectedMonthlyYear}
+        onSelectYear={setSelectedMonthlyYear}
+      />
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
         {/* Main Charts Section (2/3) */}
@@ -712,6 +737,183 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         </div>
       </div>
     </div>
+  );
+}
+
+function MonthlyReadingChart({
+  stats,
+  goals,
+  selectedYear,
+  onSelectYear,
+}: {
+  stats: MonthlyStatEntry[];
+  goals: GoalData[];
+  selectedYear: number;
+  onSelectYear: (year: number) => void;
+}) {
+  const [hoveredMonth, setHoveredMonth] = useState<number | null>(null);
+
+  const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+  const currentYear = new Date().getFullYear();
+  const currentMonth = new Date().getMonth() + 1; // 1-indexed
+
+  // All years that have any data, plus the current year, sorted descending
+  const yearsWithData = [...new Set([currentYear, ...stats.map(s => s.year)])].sort((a, b) => b - a);
+
+  // Build 12 entries for the selected year, filling zeros for months with no completions
+  const monthlyData = MONTHS.map((name, i) => {
+    const month = i + 1;
+    const entry = stats.find(s => s.year === selectedYear && s.month === month);
+    const isFuture = selectedYear === currentYear && month > currentMonth;
+    return { month, name, count: entry?.count ?? 0, isFuture };
+  });
+
+  const yearTotal = monthlyData.reduce((sum, m) => sum + m.count, 0);
+  const maxCount = Math.max(...monthlyData.map(m => m.count), 1);
+  const yearGoal = goals.find(g => g.year === selectedYear);
+  const goalProgress = yearGoal && yearGoal.target_value > 0
+    ? Math.min(Math.round((yearTotal / yearGoal.target_value) * 100), 100)
+    : null;
+
+  return (
+    <section className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 mb-12">
+      {/* Header */}
+      <div className="flex flex-wrap justify-between items-start gap-4 mb-8">
+        <div>
+          <h3 className="font-headline italic text-xl flex items-center gap-3">
+            <Icon icon={TrendingUp} size="md" />
+            Books Read by Month
+          </h3>
+          <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold mt-1">
+            Monthly completion history
+          </p>
+        </div>
+
+        {/* Year selector */}
+        <div className="flex gap-2 flex-wrap">
+          {yearsWithData.map(year => (
+            <button
+              key={year}
+              onClick={() => onSelectYear(year)}
+              className={[
+                'px-3.5 py-1.5 rounded-full font-label text-[10px] font-bold uppercase tracking-widest transition-colors',
+                selectedYear === year
+                  ? 'bg-primary text-on-primary'
+                  : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface',
+              ].join(' ')}
+            >
+              {year}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* Bar chart */}
+      <div className="flex items-end gap-2 sm:gap-3 h-40 mb-4">
+        {monthlyData.map(({ month, name, count, isFuture }) => {
+          const isCurrentMonth = selectedYear === currentYear && month === currentMonth;
+          const barHeightPct = Math.max((count / maxCount) * 100, count > 0 ? 8 : 0);
+          const isHovered = hoveredMonth === month;
+
+          return (
+            <div
+              key={month}
+              className="flex-1 flex flex-col items-center justify-end h-full gap-1.5 group"
+              onMouseEnter={() => !isFuture && setHoveredMonth(month)}
+              onMouseLeave={() => setHoveredMonth(null)}
+            >
+              {/* Count label above bar */}
+              <span className={[
+                'font-label text-[9px] font-bold transition-opacity',
+                count > 0 ? 'opacity-100' : 'opacity-0',
+                isCurrentMonth ? 'text-primary' : 'text-on-surface-variant',
+              ].join(' ')}>
+                {count > 0 ? count : ''}
+              </span>
+
+              {/* Bar */}
+              <div className="relative w-full flex justify-center">
+                <motion.div
+                  initial={{ height: 0 }}
+                  animate={{ height: isFuture ? 0 : `${barHeightPct}%` }}
+                  transition={{ duration: 0.6, delay: (month - 1) * 0.04, ease: 'easeOut' }}
+                  style={{ height: `${barHeightPct}%`, minHeight: count > 0 ? 6 : 0 }}
+                  className={[
+                    'w-full max-w-[36px] rounded-t-md transition-colors',
+                    isFuture
+                      ? 'bg-transparent'
+                      : isCurrentMonth
+                        ? 'bg-primary shadow-[0_0_12px_rgba(var(--color-primary-rgb,99,102,241),0.35)]'
+                        : isHovered
+                          ? 'bg-primary/80'
+                          : count > 0
+                            ? 'bg-primary/50'
+                            : 'bg-surface-container-highest',
+                  ].join(' ')}
+                />
+
+                {/* Tooltip */}
+                {isHovered && !isFuture && (
+                  <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 z-50 pointer-events-none">
+                    <div className="bg-on-surface text-surface rounded-lg px-2.5 py-1.5 text-[10px] whitespace-nowrap shadow-xl font-label">
+                      <div className="font-bold">{name} {selectedYear}</div>
+                      <div className="opacity-75 mt-0.5">
+                        {count === 0 ? 'No books completed' : `${count} ${count === 1 ? 'book' : 'books'} completed`}
+                      </div>
+                    </div>
+                    <div className="absolute top-full left-1/2 -translate-x-1/2 -mt-[1px] border-4 border-transparent border-t-on-surface" />
+                  </div>
+                )}
+              </div>
+
+              {/* Month label */}
+              <span className={[
+                'font-label text-[9px] uppercase tracking-widest font-bold',
+                isCurrentMonth ? 'text-primary' : 'text-on-surface-variant',
+              ].join(' ')}>
+                {name}
+              </span>
+            </div>
+          );
+        })}
+      </div>
+
+      {/* Footer: year summary */}
+      <div className="pt-5 border-t border-outline-variant/10 flex flex-wrap justify-between items-center gap-4">
+        <div className="flex gap-6">
+          <div>
+            <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">
+              {selectedYear} Total
+            </span>
+            <span className="serif-text text-2xl text-on-surface font-medium">{yearTotal} {yearTotal === 1 ? 'Book' : 'Books'}</span>
+          </div>
+          {yearGoal && yearGoal.target_value > 0 && (
+            <div>
+              <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Goal</span>
+              <span className="serif-text text-2xl text-secondary font-medium">{yearGoal.target_value} Books</span>
+            </div>
+          )}
+          {goalProgress !== null && (
+            <div>
+              <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Progress</span>
+              <span className={`serif-text text-2xl font-medium ${goalProgress >= 100 ? 'text-tertiary' : 'text-primary'}`}>
+                {goalProgress}%{goalProgress >= 100 ? ' ✓' : ''}
+              </span>
+            </div>
+          )}
+        </div>
+
+        {/* Best month callout */}
+        {yearTotal > 0 && (() => {
+          const best = monthlyData.reduce((a, b) => b.count > a.count ? b : a);
+          return best.count > 0 ? (
+            <p className="font-headline italic text-xs text-on-surface-variant">
+              Best month: <span className="text-on-surface font-bold not-italic">{best.name}</span> with {best.count} {best.count === 1 ? 'book' : 'books'}
+            </p>
+          ) : null;
+        })()}
+      </div>
+    </section>
   );
 }
 

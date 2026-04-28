@@ -341,6 +341,36 @@ async function startServer() {
     }
   });
 
+  // Monthly completions grouped by year and month — drives the historical chart
+  app.get("/api/goals/monthly-stats", (_req, res) => {
+    try {
+      const rows = db.prepare(`
+        SELECT
+          year,
+          CAST(strftime('%m', completed_at) AS INTEGER) AS month,
+          COUNT(*) AS count
+        FROM goal_completions
+        GROUP BY year, month
+        ORDER BY year, month
+      `).all();
+      res.json(rows);
+    } catch (error) {
+      console.error("Error fetching monthly stats:", error);
+      res.status(500).json({ error: "Failed to fetch monthly stats" });
+    }
+  });
+
+  // All goal targets across all years — lets the frontend show goal lines for any year
+  app.get("/api/goals/all", (_req, res) => {
+    try {
+      const goals = db.prepare("SELECT year, target_value FROM reading_goals ORDER BY year DESC").all();
+      res.json(goals);
+    } catch (error) {
+      console.error("Error fetching all goals:", error);
+      res.status(500).json({ error: "Failed to fetch all goals" });
+    }
+  });
+
   // Goals API (Phase 2 - Basic Reading Goals)
   app.get("/api/goals/:year", (req, res) => {
     try {
