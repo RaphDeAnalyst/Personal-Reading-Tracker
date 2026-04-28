@@ -31,7 +31,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
       })
       .catch(err => {
         console.error("Fetch book error", err);
-        showToast?.("Failed to consult the archives", "error");
+        showToast?.("Failed to load book details.", "error");
       });
   }, [bookId]);
 
@@ -56,14 +56,14 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
         body: JSON.stringify({ currentPage: targetPage })
       });
       if (res.ok) {
-        showToast?.("Progress archived", "success");
+        showToast?.("Progress saved", "success");
         if (book && targetPage === book.total_pages) {
           setShowSuccess(true);
         } else {
           onSaved();
         }
       } else {
-        showToast?.("Failed to archive progress", "error");
+        showToast?.("Failed to save progress", "error");
       }
     } catch (e) {
       console.error("Log error", e);
@@ -83,7 +83,7 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
   if (!book) return (
     <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
       <Icon icon={Loader2} size="lg" variant="primary" className="animate-spin" />
-      Consulting the archives...
+      Loading...
     </div>
   );
 

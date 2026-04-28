@@ -97,13 +97,13 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
             <div className="py-20 text-center border border-dashed border-outline-variant/30 rounded-2xl bg-surface-container-low/30">
               <Icon icon={searchQuery ? Search : (activeTab === 'pending' ? BookOpen : PenLine)} size="xl" variant="muted" />
               <p className="font-headline italic text-xl text-on-surface-variant">
-                {searchQuery ? 'No matched records.' : (activeTab === 'pending' ? 'All volumes have been synthesized.' : 'Your archive of reflections is currently empty.')}
+                {searchQuery ? 'No results found.' : (activeTab === 'pending' ? 'All completed books have reflections.' : 'No reflections written yet.')}
               </p>
               <p className="text-sm text-outline-variant mt-2 max-w-xs mx-auto">
                 {searchQuery
-                  ? 'Your search query did not correlate with any current or archived volumes.'
+                  ? 'No books match your search.'
                   : (activeTab === 'pending'
-                      ? 'Complete a book to unlock its reflection sanctuary.'
+                      ? 'Complete a book to write your first reflection.'
                       : 'Synthesize your first reading experience to begin your journal.')}
               </p>
               {searchQuery && (
@@ -161,7 +161,7 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
       {/* Atmospheric detail */}
       <footer className="pt-12 border-t border-outline-variant/10 mt-auto">
         <p className="text-[10px] text-center text-outline-variant uppercase tracking-[0.2em] font-bold italic">
-          Distillation of wisdom is the end of all archived journeys.
+          Writing reflections helps you remember and apply what you read.
         </p>
       </footer>
     </main>

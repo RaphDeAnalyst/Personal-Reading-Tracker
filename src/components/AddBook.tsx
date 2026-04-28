@@ -56,9 +56,9 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
           cover_url: data.cover_url || prev.cover_url,
           isbn: data.isbn || prev.isbn
         }));
-        showToast?.("Archival data retrieved", "success");
+        showToast?.("Book details fetched", "success");
       } else {
-        showToast?.(data.error || "Volume not found in external archives", "error");
+        showToast?.(data.error || "Book not found. Try a different title or ISBN.", "error");
       }
     } catch (e) {
       console.error("ISBN Lookup failed:", e);
@@ -210,15 +210,15 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             body: JSON.stringify({ tagIds: selectedTagIds })
           });
         }
-        showToast?.(`${formData.title} archived successfully`, "success");
+        showToast?.(`"${formData.title}" added to your library`, "success");
         onAdded();
       } else {
         const err = await res.json();
-        showToast?.(err.error || "Failure to archive volume", "error");
+        showToast?.(err.error || "Failed to add book. Please try again.", "error");
       }
     } catch (e) {
       console.error("Add book error", e);
-      showToast?.("Network error while archiving volume", "error");
+      showToast?.("Network error. Book was not saved.", "error");
     } finally {
       setLoading(false);
     }
@@ -229,14 +229,14 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
     <main className="pt-12 pb-32 px-6 max-w-4xl mx-auto animate-in fade-in slide-in-from-bottom-4 duration-700">
       {/* Hero Section */}
       <section className="mb-16">
-        <span className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-4 block">New Acquisition</span>
+        <span className="font-label text-xs uppercase tracking-[0.2em] text-on-surface-variant mb-4 block">Add a Book</span>
         <h1 className="text-5xl md:text-6xl font-headline tracking-tight text-on-surface leading-tight mb-6">
-          Curate your next <br /><i className="font-serif italic">literary journey.</i>
+          Add a book to <br /><i className="font-serif italic">your library.</i>
         </h1>
         <p className="text-on-surface-variant font-body leading-relaxed max-w-md">
-          {formData.mode === 'DIGITAL' 
-            ? 'Select a PDF volume to begin your digital archive. Metadata will be extracted automatically.'
-            : 'Every great volume deserves a place in your archive. Enter the details below to begin tracking.'}
+          {formData.mode === 'DIGITAL'
+            ? 'Upload a PDF to track and read it digitally. Book details will be extracted automatically.'
+            : 'Enter the book details below to start tracking your reading progress.'}
         </p>
       </section>
 
@@ -258,7 +258,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 <div className="text-center flex flex-col items-center gap-2">
                   <Icon icon={extracting ? Loader2 : BookOpen} size="xl" variant={extracting ? 'primary' : 'muted'} className={extracting ? 'animate-spin' : ''} />
                   <p className="text-[10px] uppercase tracking-widest text-outline-variant font-medium">
-                    {extracting ? 'Analyzing Volume...' : 'Cover Preview'}
+                    {extracting ? 'Reading PDF...' : 'Cover Preview'}
                   </p>
                 </div>
               )}
@@ -300,7 +300,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             {formData.mode === 'DIGITAL' && (
               <div className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
-                  Choose PDF Volume
+                  Choose PDF File
                 </label>
                 <div className="relative">
                   <input 
@@ -454,7 +454,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
               <textarea
                 className="w-full bg-surface-container-low/30 border border-outline-variant/20 rounded-lg p-4 text-sm font-body placeholder:text-outline-variant/50 focus:outline-none focus:border-primary focus:ring-1 focus:ring-primary/10 transition-all min-h-[120px] resize-none"
                 id="description"
-                placeholder="Brief summary or thoughts on this volume..."
+                placeholder="Brief summary or your thoughts on this book..."
                 value={formData.description}
                 onChange={e => setFormData({ ...formData, description: e.target.value })}
               />
@@ -505,7 +505,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
             {/* Tags Section */}
             <div className="group">
               <label className="block text-[10px] uppercase tracking-[0.15em] text-on-surface-variant mb-4 group-focus-within:text-primary transition-colors">
-                Genre Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional - Organize your archive)</span>
+                Genre Tags <span className="lowercase italic opacity-60 text-[9px]">(Optional - Organize your library)</span>
               </label>
               <TagSelector
                 selectedTagIds={selectedTagIds}
@@ -522,7 +522,7 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
                 type="submit"
               >
                 <Icon icon={loading ? Loader2 : Archive} size="md" variant="inverted" className={loading ? 'animate-spin' : ''} />
-                <span>{loading ? 'Archiving...' : `Add to Archive`}</span>
+                <span>{loading ? 'Saving...' : 'Add to Library'}</span>
               </button>
               <button
                 type="button"

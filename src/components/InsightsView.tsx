@@ -126,7 +126,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
         }
       } catch (err) {
         console.error(err);
-        showToast?.("Could not gather your journey details", "error");
+        showToast?.("Failed to load your stats.", "error");
       } finally {
         setLoading(false);
       }
@@ -169,7 +169,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
     return (
       <div className="py-24 flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-        <p className="font-headline italic text-on-surface-variant text-lg">Gathering your journey...</p>
+        <p className="font-headline italic text-on-surface-variant text-lg">Loading your stats...</p>
       </div>
     );
   }
@@ -197,8 +197,8 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       {/* Header */}
       <header className="mb-12 flex flex-col sm:flex-row justify-between items-start gap-6">
         <div className="min-w-0">
-          <h2 className="serif-text text-3xl sm:text-4xl text-on-surface mb-2 break-words">My Archive</h2>
-          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest break-words">Wisdom & Reflection</p>
+          <h2 className="serif-text text-3xl sm:text-4xl text-on-surface mb-2 break-words">My Stats</h2>
+          <p className="text-on-surface-variant font-label text-sm uppercase tracking-widest break-words">Reading progress & insights</p>
         </div>
         <button
           onClick={onToggleTheme}
@@ -222,7 +222,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           tooltip="Books you have read and completed — this count is permanent and won't change if you remove books from your library"
         />
         <StatCard
-          label="Wisdom Index"
+          label="Reflection Rate"
           value={`${wisdomIndex}%`}
           icon={Lightbulb}
           color="text-tertiary"
@@ -323,7 +323,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 </div>
                 <div className="flex items-end justify-between gap-4">
                   <p className="text-[11px] text-on-surface-variant italic">
-                    {goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) > 0 ? `${goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0)} volumes to complete` : 'Goal achieved—your sanctuary grows!'}
+                    {goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) > 0 ? `${goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0)} books left to reach your goal` : 'Goal reached! Great work this year.'}
                   </p>
                   <button
                     onClick={() => {
@@ -452,11 +452,11 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
             <div className="mt-8 pt-6 border-t border-outline-variant/10 flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
               <p className="font-headline italic text-xs text-on-surface-variant max-w-[280px]">
                 {peakPages > dailyAverageThreshold
-                  ? "Your archive expands with steady rhythm. Depth builds through consistent presence."
-                  : "Every page read is an offering to wisdom. Depth matters more than haste."}
+                  ? "You're reading consistently. Keep it up."
+                  : "Every page counts. Consistency matters more than speed."}
               </p>
               <div className="text-right shrink-0">
-                <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Weekly Volume</span>
+                <span className="block font-label text-[8px] uppercase tracking-[0.2em] font-bold text-on-surface-variant mb-1">Pages This Week</span>
                 <span className="serif-text text-2xl text-primary font-medium">{last7Days.reduce((sum, t) => sum + t.pages, 0)} Pages</span>
               </div>
             </div>
@@ -471,13 +471,13 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           {/* Genre & Author Distribution */}
           <div className="flex flex-col md:flex-row gap-6">
             <DistributionChart
-              title="Genre Topography"
+              title="Books by Genre"
               data={data.genreDistribution}
               icon={FolderOpen}
               total={data.stats.completedBooks || 1}
             />
             <DistributionChart
-              title="Author Influence"
+              title="Books by Author"
               data={data.authorDistribution.map(a => ({ name: a.author, count: a.count }))}
               icon={Pen}
               total={data.stats.completedBooks || 1}
@@ -491,7 +491,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           <section className="space-y-4">
             <h3 className="font-headline italic text-lg flex items-center gap-3 text-tertiary">
               <Icon icon={Lightbulb} size="md" variant="success" />
-              Recent Wisdom
+              Recent Reflections
             </h3>
             <div className="space-y-4">
               {data.recentReflections.length > 0 ? data.recentReflections.slice(0, 5).map((r, i) => (
@@ -519,7 +519,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 </motion.div>
               )) : (
                 <div className="py-8 text-center border-2 border-dashed border-outline-variant/10 rounded-xl text-on-surface-variant italic font-headline opacity-60 text-sm">
-                  Begin your reflections. <br />Wisdom awaits.
+                  No reflections written yet.
                 </div>
               )}
             </div>

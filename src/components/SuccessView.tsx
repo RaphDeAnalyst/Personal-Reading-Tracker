@@ -52,11 +52,11 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
         {/* Editorial Content Cluster */}
         <div className="space-y-4">
           <h1 className="text-4xl md:text-5xl font-headline font-medium tracking-tight text-on-surface">
-            {bookDetail.status === 'COMPLETED' ? 'Volume Archived' : 'Book completed'}
+            {bookDetail.status === 'COMPLETED' ? 'Book Completed' : 'Progress Saved'}
           </h1>
           <div className="flex flex-col gap-1">
             <p className="text-on-surface-variant font-body text-lg leading-relaxed italic opacity-80">
-              Your journey has been recorded
+              Progress saved to your reading history
             </p>
             <p className="font-label text-[10px] uppercase tracking-[0.2em] font-bold text-tertiary/60">
               {isFullReflection ? 'Reflection saved successfully' : 
@@ -73,7 +73,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
           </div>
           
           <div className="relative z-10">
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-4">Last Archive Entry</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-on-surface-variant mb-4">Last Reading Session</p>
             <div className="flex items-start gap-5">
               <div className="w-16 h-24 bg-surface-container-highest shadow-md rounded flex-shrink-0 overflow-hidden transform transition-transform group-hover:scale-105 duration-500">
                 {bookDetail.cover_url ? (
@@ -86,7 +86,7 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
               </div>
               <div className="space-y-1 py-1 min-w-0">
                 <h3 className="font-headline text-xl text-on-surface italic font-semibold line-clamp-2 break-words leading-tight">{bookDetail.title}</h3>
-                <p className="text-sm text-on-surface-variant/80 break-words">{bookDetail.total_pages} pages archived</p>
+                <p className="text-sm text-on-surface-variant/80 break-words">{bookDetail.total_pages} total pages</p>
                 {/* Progress Filament */}
                 <div className="pt-5">
                   <div className="w-32 h-[2px] bg-surface-container-highest relative">

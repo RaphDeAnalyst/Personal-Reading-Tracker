@@ -47,7 +47,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       setBookDetail(data);
     } catch (e) {
       console.error("Fetch detail error:", e);
-      showToast?.("Failed to retrieve volume details", "error");
+      showToast?.("Failed to load book details.", "error");
     }
   };
 
@@ -109,7 +109,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         body: JSON.stringify({ status: 'COMPLETED' })
       });
       if (res.ok) {
-        showToast?.("Volume marked as completed", "success");
+        showToast?.("Book marked as completed", "success");
         fetchData();
       } else {
         showToast?.("Failed to mark as completed", "error");
@@ -151,10 +151,10 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
         method: 'DELETE'
       });
       if (res.ok) {
-        showToast?.("Volume decommissioned from the archive", "success");
+        showToast?.("Book removed from your library", "success");
         onDelete();
       } else {
-        showToast?.("Failed to decommission volume", "error");
+        showToast?.("Failed to remove book", "error");
       }
     } catch (e) {
       console.error("Delete error:", e);
@@ -166,7 +166,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
   if (!bookDetail) return <div className="text-center font-headline italic py-24 text-on-surface-variant flex flex-col items-center gap-4">
     <div className="flex justify-center"><Icon icon={Loader2} size="lg" variant="primary" className="animate-spin" /></div>
-    Consulting the archives...
+    Loading...
   </div>;
 
   const progress = Math.round(((bookDetail.current_page || 0) / bookDetail.total_pages) * 100);
@@ -258,7 +258,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
 
             <div className="pt-2">
               <p className="text-on-surface-variant text-sm leading-relaxed italic">
-                “This document resides within your personal sanctuary. Every chapter archived is a step toward eternal wisdom.”
+                Your book details and reading progress are tracked below.
               </p>
             </div>
             <div className="flex flex-col gap-2 pt-4">
@@ -268,12 +268,12 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                   className="flex items-center gap-2 text-outline-variant hover:text-error transition-colors text-[10px] font-bold uppercase tracking-widest"
                 >
                   <Icon icon={Trash2} size="sm" variant="danger" />
-                  Decommission Volume
+                  Remove Book
                 </button>
               ) : (
                 <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-top-1 duration-300">
                   <p className="text-[10px] text-error font-bold uppercase tracking-[0.1em] border-l-2 border-error pl-3 py-1">
-                    This action is irreversible. <br/>Proceed with decommissioning?
+                    This will permanently delete this book and all its data. This cannot be undone.
                   </p>
                   <div className="flex gap-4">
                     <button 
@@ -281,7 +281,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                       disabled={logging}
                       className="text-[10px] font-bold uppercase tracking-widest text-error hover:underline disabled:opacity-50"
                     >
-                      {logging ? 'Archiving...' : 'Yes, Decommission'}
+                      {logging ? 'Removing...' : 'Yes, Remove'}
                     </button>
                     <button 
                       onClick={() => setShowDeleteConfirm(false)}
@@ -433,7 +433,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                         }).replace(',', ' —')}
                         {index === 0 && <span className="ml-2 text-tertiary normal-case italic font-headline">Recent</span>}
                       </span>
-                      <p className="font-medium text-on-surface">“Gained insights up to page {log.current_page}”</p>
+                      <p className="font-medium text-on-surface">"Gained insights up to page {log.current_page}"</p>
                     </div>
                     <span className="w-fit text-sm font-bold text-tertiary bg-tertiary-container/40 px-4 py-1.5 rounded-full border border-tertiary-dim/10">
                       +{log.pages_read} pages read
@@ -449,12 +449,12 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
           {/* Notes / Reflections */}
           {bookDetail.reflection ? (
             <div className="pt-12 pb-10">
-              <h3 className="font-headline text-2xl italic mb-6 font-semibold">Sacred Reflections</h3>
+              <h3 className="font-headline text-2xl italic mb-6 font-semibold">Your Reflections</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="p-6 bg-surface-container-lowest rounded-lg shadow-sm border border-outline-variant/10 group hover:border-tertiary/20 transition-colors">
                   <p className="text-sm text-on-surface leading-relaxed font-label italic line-clamp-4">"{bookDetail.reflection.content}"</p>
                   <div className="mt-4 flex items-center justify-between">
-                    <span className="text-[10px] uppercase tracking-widest font-bold text-outline-variant">Archived Reflection</span>
+                    <span className="text-[10px] uppercase tracking-widest font-bold text-outline-variant">Your Reflection</span>
                     <div className="flex gap-0.5">
                       {[...Array(5)].map((_, i) => (
                         <Icon key={i} icon={Star} size="md" className={i < (bookDetail.reflection.rating || 0) ? 'fill-tertiary text-tertiary' : 'text-outline-variant/30'} />
@@ -466,7 +466,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
             </div>
           ) : (
              <div className="pt-12 pb-10">
-                <h3 className="font-headline text-2xl italic mb-6 font-semibold opacity-30">Sacred Reflections</h3>
+                <h3 className="font-headline text-2xl italic mb-6 font-semibold opacity-30">Your Reflections</h3>
                 <button 
                   onClick={() => onWriteReflection(bookId)}
                   className="w-full py-8 border-2 border-dashed border-outline-variant/20 rounded-xl text-on-surface-variant/50 hover:text-primary hover:border-primary/20 transition-all font-headline italic text-lg"

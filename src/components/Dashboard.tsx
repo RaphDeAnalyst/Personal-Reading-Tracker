@@ -205,7 +205,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
         }
       } catch (e) {
         console.error("Dashboard fetch error:", e);
-        showToast?.("Failed to fetch archive. Checking connections...", "error");
+        showToast?.("Failed to load your library.", "error");
       } finally {
         setLoading(false);
       }
@@ -290,7 +290,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
     return (
       <div className="py-24 flex flex-col items-center justify-center gap-6">
         <div className="w-12 h-12 border-4 border-primary/10 border-t-primary rounded-full animate-spin"></div>
-        <p className="font-headline italic text-on-surface-variant">Opening the archives...</p>
+        <p className="font-headline italic text-on-surface-variant">Loading your library...</p>
       </div>
     );
   }
@@ -411,7 +411,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             type="text"
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
-            placeholder="Search archive..."
+            placeholder="Search your library..."
             className="bg-transparent border-none outline-none text-xs font-label w-full sm:w-48 placeholder:text-outline-variant/50"
           />
           {isSearching && (
@@ -495,8 +495,8 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
           ) : (
             <div className="py-24 text-center border-2 border-dashed border-outline-variant/10 rounded-3xl bg-surface-container-low/20 animate-in zoom-in-95 duration-300">
               
-              <p className="font-headline italic text-2xl text-on-surface-variant">No matches in the archive.</p>
-              <p className="text-sm text-outline-variant mt-2">" {searchQuery} " yielded no results. Try another volume or author.</p>
+              <p className="font-headline italic text-2xl text-on-surface-variant">No results found.</p>
+              <p className="text-sm text-outline-variant mt-2">No books match "{searchQuery}". Try a different title or author.</p>
             </div>
           )
         ) : (
@@ -511,7 +511,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
                 <Icon icon={PackageOpen} size="xl" variant="muted" />
               </div>
               <p className="font-headline italic text-2xl text-on-surface-variant">Empty Section.</p>
-              <p className="text-sm text-outline-variant mt-2">No volumes found in this section of the archive.</p>
+              <p className="text-sm text-outline-variant mt-2">No books in this section yet.</p>
               <button onClick={onAddBook} className="mt-6 text-primary font-label text-[10px] uppercase tracking-widest font-bold hover:underline">Add New Entry</button>
             </div>
           )
@@ -523,8 +523,8 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
         <section className="mt-24 bg-surface-container-low p-10 md:p-12 rounded-2xl flex flex-col lg:flex-row gap-12 items-center">
           <div className="w-full lg:w-1/2">
             <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Reading Stats</span>
-            <h3 className="serif-text text-3xl mb-4 leading-tight">Your focused sanctuary.</h3>
-            <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Record your thoughts as you progress through your library. Wisdom is meant to be archived.</p>
+            <h3 className="serif-text text-3xl mb-4 leading-tight">Currently Reading</h3>
+            <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Track your progress and write reflections as you read.</p>
             <button onClick={() => setActiveTab('completed')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Completed →</button>
           </div>
           <div className="w-full lg:w-1/2 flex flex-col md:flex-row gap-6 items-center justify-center lg:justify-end">

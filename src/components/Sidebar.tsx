@@ -123,7 +123,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
                   </div>
                   <div className="flex flex-col">
                     <span className="font-label text-xs font-bold text-on-surface">The Archivist</span>
-                    <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">Master of Tomes</span>
+                    <span className="font-label text-[10px] text-on-surface-variant uppercase tracking-widest">Your Library</span>
                   </div>
                 </div>
               </div>

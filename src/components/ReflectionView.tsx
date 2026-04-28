@@ -119,14 +119,14 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
       });
 
       if (res.ok) {
-        showToast?.("Volume fully archived with reflections", "success");
+        showToast?.("Reflection saved", "success");
         onComplete(bookId);
       } else {
-        showToast?.("Failed to finalize volume", "error");
+        showToast?.("Failed to save reflection", "error");
       }
     } catch (error) {
       console.error("Completion error", error);
-      showToast?.("Network error while finalizing volume", "error");
+      showToast?.("Network error. Reflection was not saved.", "error");
     } finally {
       setLoading(false);
     }
@@ -183,7 +183,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
       <div className="bg-tertiary/5 border border-tertiary/20 rounded-lg p-4 flex items-start gap-3">
         <Icon icon={Info} size="lg" className="flex-shrink-0" />
         <p className="text-sm text-on-surface-variant">
-          <span className="font-bold text-tertiary">Tip:</span> The first field is the key—filling it marks this reflection as "archived." The other two fields are optional companions to deepen your synthesis.
+          <span className="font-bold text-tertiary">Tip:</span> The first field is required — filling it saves your reflection. The other two are optional.
         </p>
       </div>
 
@@ -271,7 +271,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
       {/* Rating Selection */}
       <section className="mt-8 flex flex-col gap-6">
         <div className="flex flex-col gap-4">
-          <label className="font-headline text-xl text-primary">Rate This Volume</label>
+          <label className="font-headline text-xl text-primary">Rate This Book</label>
           <div className="flex gap-4 items-center">
             <div className="flex gap-2">
               {[1, 2, 3, 4, 5].map((star) => (
