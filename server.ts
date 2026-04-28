@@ -164,7 +164,7 @@ async function startServer() {
     `);
 
     // Backfill goal_completions from existing COMPLETED books
-    const completedBooks = db.prepare("SELECT id, created_at FROM books WHERE status = 'COMPLETED'").all() as any[];
+    const completedBooks = db.prepare("SELECT id, created_at, title, author, total_pages FROM books WHERE status = 'COMPLETED'").all() as any[];
     const backfill = db.transaction(() => {
       for (const book of completedBooks) {
         const bookId = book.id;
@@ -177,9 +177,9 @@ async function startServer() {
         const year = new Date(completedDate).getFullYear();
 
         db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
-          VALUES (?, ?, ?)
-        `).run(year, bookId, completedDate);
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(year, bookId, completedDate, book.title, book.author, book.total_pages);
       }
     });
 
@@ -191,6 +191,77 @@ async function startServer() {
     }
 
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_goal_completions_year ON goal_completions(year);`).run();
+
+    // Migration: Add title/author to goal_completions for data persistence
+    const gcInfo = db.prepare("PRAGMA table_info(goal_completions)").all() as any[];
+    if (!gcInfo.find((c: any) => c.name === 'title')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN title TEXT");
+    }
+    if (!gcInfo.find((c: any) => c.name === 'author')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN author TEXT");
+    }
+
+    // Backfill title/author for existing goal_completions rows
+    try {
+      db.prepare(`
+        UPDATE goal_completions
+        SET title = (SELECT title FROM books WHERE id = goal_completions.book_id),
+            author = (SELECT author FROM books WHERE id = goal_completions.book_id)
+        WHERE title IS NULL
+      `).run();
+      console.log("✓ Backfilled goal_completions with title/author");
+    } catch (err) {
+      console.log("Note: goal_completions title/author backfill completed or already populated");
+    }
+
+    // Migration: Add total_pages to goal_completions for immutable reading stats
+    if (!gcInfo.find((c: any) => c.name === 'total_pages')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN total_pages INTEGER");
+    }
+
+    // Backfill total_pages for existing goal_completions rows
+    try {
+      db.prepare(`
+        UPDATE goal_completions
+        SET total_pages = (SELECT total_pages FROM books WHERE id = goal_completions.book_id)
+        WHERE total_pages IS NULL
+      `).run();
+      console.log("✓ Backfilled goal_completions with total_pages");
+    } catch (err) {
+      console.log("Note: goal_completions total_pages backfill completed or already populated");
+    }
+
+    // Migration: Create completion_reflections table (immutable reflection snapshots)
+    db.exec(`
+      CREATE TABLE IF NOT EXISTS completion_reflections (
+        id            INTEGER PRIMARY KEY AUTOINCREMENT,
+        book_id       INTEGER NOT NULL UNIQUE,
+        title         TEXT NOT NULL,
+        author        TEXT,
+        rating        INTEGER,
+        content       TEXT,
+        learning      TEXT,
+        application   TEXT,
+        disagreement  TEXT,
+        saved_at      DATETIME DEFAULT CURRENT_TIMESTAMP
+      );
+    `);
+
+    // Backfill completion_reflections from existing reflections (for completed books)
+    try {
+      db.prepare(`
+        INSERT OR REPLACE INTO completion_reflections
+          (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+        SELECT
+          r.book_id, b.title, b.author, r.rating, r.content, r.learning, r.application, r.disagreement, r.created_at
+        FROM reflections r
+        JOIN books b ON r.book_id = b.id
+        WHERE b.status = 'COMPLETED'
+      `).run();
+      console.log("✓ Backfilled completion_reflections from existing reflections");
+    } catch (err) {
+      console.log("Note: completion_reflections backfill completed or already populated");
+    }
 
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
@@ -243,6 +314,30 @@ async function startServer() {
     } catch (error) {
       console.error("Lookup Error:", error);
       res.status(500).json({ error: "Failed to connect to external metadata service" });
+    }
+  });
+
+  // Reading Archive: Get all goal completions with book and reflection data
+  app.get("/api/goals/reading-list", (req, res) => {
+    try {
+      const entries = db.prepare(`
+        SELECT
+          gc.id, gc.year, gc.book_id, gc.completed_at,
+          COALESCE(b.title, gc.title) as title,
+          COALESCE(b.author, gc.author) as author,
+          b.cover_url, b.mode, b.pdf_file_path,
+          (b.id IS NOT NULL) as book_exists,
+          r.id as reflection_id, r.rating, r.content,
+          r.learning, r.application, r.disagreement
+        FROM goal_completions gc
+        LEFT JOIN books b ON gc.book_id = b.id
+        LEFT JOIN reflections r ON gc.book_id = r.book_id
+        ORDER BY gc.completed_at DESC
+      `).all();
+      res.json(entries);
+    } catch (error) {
+      console.error("Error fetching reading list:", error);
+      res.status(500).json({ error: "Failed to fetch reading list" });
     }
   });
 
@@ -522,10 +617,11 @@ async function startServer() {
       // Record completion in goal_completions if book just became COMPLETED
       if (newStatus === 'COMPLETED' && book.status !== 'COMPLETED') {
         const year = new Date().getFullYear();
+        const bookForGoal = db.prepare("SELECT title, author, total_pages FROM books WHERE id = ?").get(id) as any;
         db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
-          VALUES (?, ?, ?)
-        `).run(year, id, new Date().toISOString());
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(year, id, new Date().toISOString(), bookForGoal?.title, bookForGoal?.author, bookForGoal?.total_pages);
       }
 
       res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
@@ -560,8 +656,8 @@ async function startServer() {
       const { id } = req.params;
       const { status, current_page } = req.body;
 
-      // Check if book exists and get its current status
-      const book = db.prepare("SELECT status FROM books WHERE id = ?").get(id) as any;
+      // Check if book exists and get its current status, title, author, and total_pages
+      const book = db.prepare("SELECT status, title, author, total_pages FROM books WHERE id = ?").get(id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
       const updates = [];
@@ -584,9 +680,9 @@ async function startServer() {
       if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
         const year = new Date().getFullYear();
         db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at)
-          VALUES (?, ?, ?)
-        `).run(year, id, new Date().toISOString());
+          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
+          VALUES (?, ?, ?, ?, ?, ?)
+        `).run(year, id, new Date().toISOString(), book.title, book.author, book.total_pages);
       }
 
       res.json({ success: true });
@@ -601,7 +697,7 @@ async function startServer() {
     try {
       const { id } = req.params;
       const { content, rating, learning, application, disagreement } = req.body;
-      
+
       db.prepare(`
         INSERT INTO reflections (book_id, content, rating, learning, application, disagreement)
         VALUES (?, ?, ?, ?, ?, ?)
@@ -612,6 +708,22 @@ async function startServer() {
           application=excluded.application,
           disagreement=excluded.disagreement
       `).run(id, content, rating, learning, application, disagreement);
+
+      // Snapshot reflection into completion_reflections if book is COMPLETED
+      const bookStatus = db.prepare("SELECT status, title, author FROM books WHERE id = ?").get(id) as any;
+      if (bookStatus?.status === 'COMPLETED') {
+        db.prepare(`
+          INSERT INTO completion_reflections (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+          ON CONFLICT(book_id) DO UPDATE SET
+            rating=excluded.rating,
+            content=excluded.content,
+            learning=excluded.learning,
+            application=excluded.application,
+            disagreement=excluded.disagreement,
+            saved_at=excluded.saved_at
+        `).run(id, bookStatus.title, bookStatus.author, rating, content, learning, application, disagreement);
+      }
 
       res.json({ success: true });
     } catch (error) {
@@ -661,14 +773,14 @@ async function startServer() {
   // Insights Dashboard
   app.get("/api/insights", (req, res) => {
     try {
-      // 1. Total books completed
-      const completedBooksCount = db.prepare("SELECT COUNT(*) as count FROM books WHERE status = 'COMPLETED'").get().count;
+      // 1. Total books completed (immutable: from goal_completions)
+      const completedBooksCount = db.prepare("SELECT COUNT(*) as count FROM goal_completions").get().count;
 
-      // 2. Total pages read
-      const totalPagesRead = db.prepare("SELECT SUM(pages_read) as total FROM logs").get().total || 0;
+      // 2. Total pages read (immutable: from goal_completions)
+      const totalPagesRead = db.prepare("SELECT COALESCE(SUM(total_pages), 0) as total FROM goal_completions").get().total;
 
-      // 3. Total reflections
-      const totalReflections = db.prepare("SELECT COUNT(*) as count FROM reflections").get().count;
+      // 3. Total reflections (immutable: from completion_reflections)
+      const totalReflections = db.prepare("SELECT COUNT(*) as count FROM completion_reflections").get().count;
 
       // 4. Reading streak
       const logDates = db.prepare("SELECT DISTINCT strftime('%Y-%m-%d', date) as day FROM logs ORDER BY day DESC").all() as { day: string }[];
@@ -730,12 +842,11 @@ async function startServer() {
         });
       }
 
-      // 7. Recent reflections preview
+      // 7. Recent reflections preview (immutable: from completion_reflections)
       const recentReflections = db.prepare(`
-        SELECT r.content, r.rating, b.title, b.author 
-        FROM reflections r 
-        JOIN books b ON r.book_id = b.id 
-        ORDER BY r.id DESC 
+        SELECT content, rating, title, author
+        FROM completion_reflections
+        ORDER BY saved_at DESC
         LIMIT 3
       `).all();
 
@@ -749,10 +860,10 @@ async function startServer() {
         LIMIT 6
       `).all();
 
-      // 9. Author Distribution
+      // 9. Author Distribution (immutable: from goal_completions)
       const authorDistribution = db.prepare(`
         SELECT author, COUNT(*) as count
-        FROM books
+        FROM goal_completions
         WHERE author IS NOT NULL AND author != ''
         GROUP BY author
         ORDER BY count DESC

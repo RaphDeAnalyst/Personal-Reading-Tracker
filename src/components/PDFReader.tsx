@@ -101,12 +101,15 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
 
       const renderTask = page.render(renderContext);
       renderTaskRef.current = renderTask;
-      
+
       await renderTask.promise;
       renderTaskRef.current = null;
     } catch (err: any) {
-      if (err.name === 'RenderingCancelledException' || err.message === 'Rendering cancelled, page 1') {
-        // Ignore cancellation errors
+      // Ignore rendering cancellation errors (occur when user navigates pages quickly)
+      const isCancelled = err.name === 'RenderingCancelledException' ||
+                          err.message?.includes('cancelled') ||
+                          err.message?.includes('Rendering');
+      if (isCancelled) {
         return;
       }
       console.error("Render failed", err);

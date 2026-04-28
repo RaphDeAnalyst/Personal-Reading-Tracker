@@ -221,7 +221,18 @@ export default function App() {
           />
         );
       case 'insights':
-        return <InsightsView showToast={showToast} fontPreference={fontPreference} onToggleFont={toggleFont} theme={theme} onToggleTheme={toggleTheme} />;
+        return (
+          <InsightsView
+            showToast={showToast}
+            fontPreference={fontPreference}
+            onToggleFont={toggleFont}
+            theme={theme}
+            onToggleTheme={toggleTheme}
+            onSelectBook={(bookId) => navigateTo({ type: 'detail', bookId })}
+            onOpenReader={(bookId) => navigateTo({ type: 'reader', bookId })}
+            onWriteReflection={(bookId) => navigateTo({ type: 'reflection', bookId })}
+          />
+        );
       case 'log-progress':
         return (
           <LogProgressView 
