@@ -231,6 +231,41 @@ async function startServer() {
       console.log("Note: goal_completions total_pages backfill completed or already populated");
     }
 
+    // Migration: Snapshot mode, cover_url, isbn, publisher, publication_year on goal_completions
+    if (!gcInfo.find((c: any) => c.name === 'mode')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN mode TEXT");
+    }
+    if (!gcInfo.find((c: any) => c.name === 'cover_url')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN cover_url TEXT");
+    }
+    if (!gcInfo.find((c: any) => c.name === 'isbn')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN isbn TEXT");
+    }
+    if (!gcInfo.find((c: any) => c.name === 'publisher')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN publisher TEXT");
+    }
+    if (!gcInfo.find((c: any) => c.name === 'publication_year')) {
+      db.exec("ALTER TABLE goal_completions ADD COLUMN publication_year INTEGER");
+    }
+
+    // Backfill new snapshot columns from books that still exist in the library
+    try {
+      db.prepare(`
+        UPDATE goal_completions
+        SET
+          mode             = (SELECT mode             FROM books WHERE id = goal_completions.book_id),
+          cover_url        = (SELECT cover_url        FROM books WHERE id = goal_completions.book_id),
+          isbn             = (SELECT isbn             FROM books WHERE id = goal_completions.book_id),
+          publisher        = (SELECT publisher        FROM books WHERE id = goal_completions.book_id),
+          publication_year = (SELECT publication_year FROM books WHERE id = goal_completions.book_id)
+        WHERE mode IS NULL
+          AND EXISTS (SELECT 1 FROM books WHERE id = goal_completions.book_id)
+      `).run();
+      console.log("✓ Backfilled goal_completions with book snapshot fields");
+    } catch (err) {
+      console.log("Note: goal_completions snapshot backfill completed or already populated");
+    }
+
     // Migration: Create completion_reflections table (immutable reflection snapshots)
     db.exec(`
       CREATE TABLE IF NOT EXISTS completion_reflections (
@@ -323,11 +358,17 @@ async function startServer() {
       const entries = db.prepare(`
         SELECT
           gc.id, gc.year, gc.book_id, gc.completed_at,
-          COALESCE(b.title, gc.title) as title,
-          COALESCE(b.author, gc.author) as author,
-          b.cover_url, b.mode, b.pdf_file_path,
-          (b.id IS NOT NULL) as book_exists,
-          r.id as reflection_id, r.rating, r.content,
+          COALESCE(b.title,            gc.title)            AS title,
+          COALESCE(b.author,           gc.author)           AS author,
+          COALESCE(b.total_pages,      gc.total_pages)      AS total_pages,
+          COALESCE(b.mode,             gc.mode)             AS mode,
+          COALESCE(b.cover_url,        gc.cover_url)        AS cover_url,
+          COALESCE(b.isbn,             gc.isbn)             AS isbn,
+          COALESCE(b.publisher,        gc.publisher)        AS publisher,
+          COALESCE(b.publication_year, gc.publication_year) AS publication_year,
+          b.pdf_file_path,
+          (b.id IS NOT NULL) AS book_exists,
+          r.id AS reflection_id, r.rating, r.content,
           r.learning, r.application, r.disagreement
         FROM goal_completions gc
         LEFT JOIN books b ON gc.book_id = b.id
@@ -647,11 +688,19 @@ async function startServer() {
       // Record completion in goal_completions if book just became COMPLETED
       if (newStatus === 'COMPLETED' && book.status !== 'COMPLETED') {
         const year = new Date().getFullYear();
-        const bookForGoal = db.prepare("SELECT title, author, total_pages FROM books WHERE id = ?").get(id) as any;
+        const bookForGoal = db.prepare(
+          "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
+        ).get(id) as any;
         db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(year, id, new Date().toISOString(), bookForGoal?.title, bookForGoal?.author, bookForGoal?.total_pages);
+          INSERT OR IGNORE INTO goal_completions
+            (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          year, id, new Date().toISOString(),
+          bookForGoal?.title, bookForGoal?.author, bookForGoal?.total_pages,
+          bookForGoal?.mode, bookForGoal?.cover_url, bookForGoal?.isbn,
+          bookForGoal?.publisher, bookForGoal?.publication_year
+        );
       }
 
       res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
@@ -709,10 +758,19 @@ async function startServer() {
       // Record completion in goal_completions if status is being set to COMPLETED
       if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
         const year = new Date().getFullYear();
+        const bookSnap = db.prepare(
+          "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
+        ).get(id) as any;
         db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(year, id, new Date().toISOString(), book.title, book.author, book.total_pages);
+          INSERT OR IGNORE INTO goal_completions
+            (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
+          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `).run(
+          year, id, new Date().toISOString(),
+          bookSnap?.title, bookSnap?.author, bookSnap?.total_pages,
+          bookSnap?.mode, bookSnap?.cover_url, bookSnap?.isbn,
+          bookSnap?.publisher, bookSnap?.publication_year
+        );
       }
 
       res.json({ success: true });
