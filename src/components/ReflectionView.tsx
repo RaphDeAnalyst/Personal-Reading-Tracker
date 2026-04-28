@@ -146,7 +146,7 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-3 text-on-surface-variant">
             <Icon icon={BookOpen} size="lg" variant="muted" />
-            <span className="text-[10px] uppercase tracking-widest font-bold font-label">Deep Reading Session</span>
+            <span className="text-[10px] uppercase tracking-widest font-bold font-label">Write Reflection</span>
           </div>
         </div>
         <div>

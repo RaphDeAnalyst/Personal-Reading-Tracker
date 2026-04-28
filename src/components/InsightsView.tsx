@@ -23,7 +23,6 @@ interface InsightsData {
   recentReflections: { content: string; rating: number; title: string; author: string }[];
   genreDistribution: { name: string; count: number }[];
   authorDistribution: { author: string; count: number }[];
-  reflectionDates?: string[];
 }
 
 
@@ -132,7 +131,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
       }
     };
     fetchInsights();
-  }, [showToast]);
+  }, []);
 
   const handleSaveGoal = async () => {
     const value = parseInt(goalInput, 10);
@@ -177,12 +176,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   if (!data) return null;
 
   // Compute wisdom index: percentage of books with reflections
+  const goalCompletionsCount = data.stats.goalCompletions ?? data.stats.completedBooks;
+
   const wisdomIndex = data.stats.completedBooks > 0
     ? Math.round((data.stats.totalReflections / data.stats.completedBooks) * 100)
     : 0;
 
-  // Compute average time to complete (days between start and completion)
-  // For now, we'll estimate based on pages and reading pace
   const avgTimeToComplete = data.stats.completedBooks > 0 && data.stats.averagePagesPerDay > 0
     ? Math.round(data.stats.totalPagesRead / data.stats.completedBooks / data.stats.averagePagesPerDay)
     : 0;
@@ -303,13 +302,13 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                 <div className="flex items-end gap-4 mb-4">
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-2">
-                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{(data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0} / {goal.target_value} books</span>
-                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round(((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) / goal.target_value * 100)}%</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{goalCompletionsCount} / {goal.target_value} books</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round(goalCompletionsCount / goal.target_value * 100)}%</span>
                     </div>
                     <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
                       <motion.div
                         initial={{ width: 0 }}
-                        animate={{ width: `${Math.min(((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) / goal.target_value * 100, 100)}%` }}
+                        animate={{ width: `${Math.min(goalCompletionsCount / goal.target_value * 100, 100)}%` }}
                         transition={{ duration: 1 }}
                         className="h-full bg-secondary rounded-full relative"
                       >
@@ -318,12 +317,12 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     </div>
                   </div>
                   <span className="font-headline text-xl text-secondary font-medium min-w-fit">
-                    {Math.max(goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0), 0)}
+                    {Math.max(goal.target_value - goalCompletionsCount, 0)}
                   </span>
                 </div>
                 <div className="flex items-end justify-between gap-4">
                   <p className="text-[11px] text-on-surface-variant italic">
-                    {goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0) > 0 ? `${goal.target_value - ((data?.stats.goalCompletions ?? data?.stats.completedBooks) || 0)} books left to reach your goal` : 'Goal reached! Great work this year.'}
+                    {goal.target_value - goalCompletionsCount > 0 ? `${goal.target_value - goalCompletionsCount} books left to reach your goal` : 'Goal reached! Great work this year.'}
                   </p>
                   <button
                     onClick={() => {

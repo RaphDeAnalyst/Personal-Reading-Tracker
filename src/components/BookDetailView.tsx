@@ -1,5 +1,5 @@
 import { useState, useEffect } from 'react';
-import { Book, Log, Reflection, BookDetail, Tag } from '../types';
+import { Book, ReadingLog, Reflection, BookDetail, Tag } from '../types';
 import TagSelector from './TagSelector';
 import Icon from './Icon';
 import {
@@ -21,7 +21,9 @@ interface BookDetailViewProps {
 export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteReflection, onOpenReader, onDelete, showToast }: BookDetailViewProps) {
   const [bookDetail, setBookDetail] = useState<BookDetail | null>(null);
   const [quickLogValue, setQuickLogValue] = useState<string>('');
-  const [logging, setLogging] = useState(false);
+  const [quickLogging, setQuickLogging] = useState(false);
+  const [tagSaving, setTagSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
@@ -65,6 +67,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   };
 
   const handleQuickLog = async (pages?: number) => {
+    if (!bookDetail) return;
     let pagesToLog = pages;
     if (!pages && quickLogValue) {
       pagesToLog = parseInt(quickLogValue, 10);
@@ -74,7 +77,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       return;
     }
 
-    setLogging(true);
+    setQuickLogging(true);
     try {
       const newPage = Math.min((bookDetail.current_page || 0) + pagesToLog, bookDetail.total_pages);
       const res = await fetch(`/api/books/${bookId}/logs`, {
@@ -97,7 +100,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       console.error("Quick log error:", e);
       showToast?.("Network error", "error");
     } finally {
-      setLogging(false);
+      setQuickLogging(false);
     }
   };
 
@@ -121,8 +124,8 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   };
 
   const handleSaveTags = async () => {
-    if (logging) return;
-    setLogging(true);
+    if (tagSaving) return;
+    setTagSaving(true);
     try {
       const res = await fetch(`/api/books/${bookId}/tags`, {
         method: 'POST',
@@ -140,12 +143,12 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       console.error("Save tags error:", e);
       showToast?.("Network error while saving tags", "error");
     } finally {
-      setLogging(false);
+      setTagSaving(false);
     }
   };
 
   const handleDelete = async () => {
-    setLogging(true);
+    setDeleting(true);
     try {
       const res = await fetch(`/api/books/${bookId}`, {
         method: 'DELETE'
@@ -160,7 +163,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
       console.error("Delete error:", e);
       showToast?.("Network error", "error");
     } finally {
-      setLogging(false);
+      setDeleting(false);
     }
   };
 
@@ -207,10 +210,10 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                       setShowTagEditor(true);
                     }
                   }}
-                  disabled={logging}
+                  disabled={tagSaving}
                   className="text-[10px] text-primary hover:underline font-bold disabled:opacity-50"
                 >
-                  {showTagEditor ? (logging ? 'Saving...' : 'Save') : 'Edit'}
+                  {showTagEditor ? (tagSaving ? 'Saving...' : 'Save') : 'Edit'}
                 </button>
               </div>
               
@@ -278,10 +281,10 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                   <div className="flex gap-4">
                     <button 
                       onClick={handleDelete}
-                      disabled={logging}
+                      disabled={deleting}
                       className="text-[10px] font-bold uppercase tracking-widest text-error hover:underline disabled:opacity-50"
                     >
-                      {logging ? 'Removing...' : 'Yes, Remove'}
+                      {deleting ? 'Removing...' : 'Yes, Remove'}
                     </button>
                     <button 
                       onClick={() => setShowDeleteConfirm(false)}
@@ -356,10 +359,10 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                     </div>
                     <button 
                       onClick={() => handleQuickLog()}
-                      disabled={logging || !quickLogValue}
+                      disabled={quickLogging || !quickLogValue}
                       className="bg-primary text-on-primary px-8 py-3.5 rounded-md font-bold text-sm hover:bg-primary-dim transition-all active:scale-95 shadow-sm disabled:opacity-50"
                     >
-                      {logging ? '...' : 'Log'}
+                      {quickLogging ? '...' : 'Log'}
                     </button>
                   </div>
                   {/* Fast Tap Buttons */}
@@ -433,7 +436,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
                         }).replace(',', ' —')}
                         {index === 0 && <span className="ml-2 text-tertiary normal-case italic font-headline">Recent</span>}
                       </span>
-                      <p className="font-medium text-on-surface">"Gained insights up to page {log.current_page}"</p>
+                      <p className="font-medium text-on-surface">Read to page {log.current_page}</p>
                     </div>
                     <span className="w-fit text-sm font-bold text-tertiary bg-tertiary-container/40 px-4 py-1.5 rounded-full border border-tertiary-dim/10">
                       +{log.pages_read} pages read

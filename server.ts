@@ -38,7 +38,24 @@ const storage = multer.diskStorage({
   },
 });
 
-const upload = multer({ storage: storage });
+const ALLOWED_IMAGE_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/gif'];
+const ALLOWED_PDF_TYPES = ['application/pdf'];
+
+const upload = multer({
+  storage,
+  limits: { fileSize: 50 * 1024 * 1024 }, // 50 MB
+  fileFilter: (req, file, cb) => {
+    if (file.fieldname === 'pdf') {
+      if (ALLOWED_PDF_TYPES.includes(file.mimetype)) return cb(null, true);
+      return cb(new Error('Only PDF files are allowed for the pdf field'));
+    }
+    if (file.fieldname === 'cover') {
+      if (ALLOWED_IMAGE_TYPES.includes(file.mimetype)) return cb(null, true);
+      return cb(new Error('Only JPEG, PNG, WebP, or GIF files are allowed for cover images'));
+    }
+    cb(null, true);
+  }
+});
 
 async function startServer() {
   try {
@@ -282,10 +299,10 @@ async function startServer() {
       );
     `);
 
-    // Backfill completion_reflections from existing reflections (for completed books)
+    // Backfill completion_reflections from existing reflections (for completed books, INSERT OR IGNORE to preserve existing snapshots)
     try {
       db.prepare(`
-        INSERT OR REPLACE INTO completion_reflections
+        INSERT OR IGNORE INTO completion_reflections
           (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
         SELECT
           r.book_id, b.title, b.author, r.rating, r.content, r.learning, r.application, r.disagreement, r.created_at
@@ -301,8 +318,8 @@ async function startServer() {
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
 
-  // Request logging middleware
-  app.use((req, res, next) => {
+  // Request logging middleware (API routes only)
+  app.use("/api", (req, res, next) => {
     console.log(`${new Date().toISOString()} ${req.method} ${req.url}`);
     next();
   });
@@ -578,18 +595,29 @@ async function startServer() {
   app.post("/api/books", upload.fields([{ name: "cover", maxCount: 1 }, { name: "pdf", maxCount: 1 }]), (req, res) => {
     try {
       const { title, author, total_pages, mode, cover_url: body_cover_url, isbn, description, publisher, publication_year } = req.body;
+
+      if (!title || !title.trim()) {
+        return res.status(400).json({ error: "Title is required" });
+      }
+      const parsedPages = parseInt(total_pages, 10);
+      if (!total_pages || isNaN(parsedPages) || parsedPages < 1) {
+        return res.status(400).json({ error: "total_pages must be a positive integer" });
+      }
+
       const files = req.files as { [fieldname: string]: Express.Multer.File[] };
-      
       const cover_url = files?.cover?.[0] ? `/uploads/${files.cover[0].filename}` : (body_cover_url || null);
       const pdf_file_path = files?.pdf?.[0] ? `/uploads/${files.pdf[0].filename}` : null;
 
       const info = db.prepare(
         "INSERT INTO books (title, author, total_pages, mode, cover_url, pdf_file_path, isbn, description, publisher, publication_year) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)"
-      ).run(title, author || "", total_pages, mode || "PHYSICAL", cover_url, pdf_file_path, isbn || null, description || null, publisher || null, publication_year || null);
-      
+      ).run(title.trim(), author || "", parsedPages, mode || "PHYSICAL", cover_url, pdf_file_path, isbn || null, description || null, publisher || null, publication_year || null);
+
       const newBook = db.prepare("SELECT * FROM books WHERE id = ?").get(info.lastInsertRowid);
       res.json(newBook);
-    } catch (error) {
+    } catch (error: any) {
+      if (error?.message?.includes('Only')) {
+        return res.status(400).json({ error: error.message });
+      }
       console.error("Error adding book:", error);
       res.status(500).json({ error: "Internal server error" });
     }
@@ -709,6 +737,25 @@ async function startServer() {
           bookForGoal?.mode, bookForGoal?.cover_url, bookForGoal?.isbn,
           bookForGoal?.publisher, bookForGoal?.publication_year
         );
+
+        // Also snapshot any existing reflection into completion_reflections
+        const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
+        if (existingReflection) {
+          db.prepare(`
+            INSERT INTO completion_reflections
+              (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(book_id) DO UPDATE SET
+              rating=excluded.rating, content=excluded.content,
+              learning=excluded.learning, application=excluded.application,
+              disagreement=excluded.disagreement, saved_at=excluded.saved_at
+          `).run(
+            id, bookForGoal?.title, bookForGoal?.author,
+            existingReflection.rating, existingReflection.content,
+            existingReflection.learning, existingReflection.application,
+            existingReflection.disagreement
+          );
+        }
       }
 
       res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
@@ -738,23 +785,32 @@ async function startServer() {
     }
   });
 
-  // Direct page update (optional but requested "Mark as Completed")
+  // Direct page update / status update
   app.patch("/api/books/:id", (req, res) => {
     try {
       const { id } = req.params;
       const { status, current_page } = req.body;
 
-      // Check if book exists and get its current status, title, author, and total_pages
+      const VALID_STATUSES = ['NOT_STARTED', 'IN_PROGRESS', 'COMPLETED'];
+      if (status !== undefined && !VALID_STATUSES.includes(status)) {
+        return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
+      }
+
       const book = db.prepare("SELECT status, title, author, total_pages FROM books WHERE id = ?").get(id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
-      const updates = [];
-      const params = [];
-      if (status) {
+      const updates: string[] = [];
+      const params: any[] = [];
+      if (status !== undefined) {
         updates.push("status = ?");
         params.push(status);
+        // Ensure current_page reaches total_pages when marking complete
+        if (status === 'COMPLETED') {
+          updates.push("current_page = ?");
+          params.push(book.total_pages);
+        }
       }
-      if (current_page !== undefined) {
+      if (current_page !== undefined && status !== 'COMPLETED') {
         updates.push("current_page = ?");
         params.push(current_page);
       }
@@ -764,7 +820,7 @@ async function startServer() {
         db.prepare(`UPDATE books SET ${updates.join(", ")} WHERE id = ?`).run(...params);
       }
 
-      // Record completion in goal_completions if status is being set to COMPLETED
+      // Record completion in goal_completions if transitioning to COMPLETED
       if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
         const year = new Date().getFullYear();
         const bookSnap = db.prepare(
@@ -780,6 +836,25 @@ async function startServer() {
           bookSnap?.mode, bookSnap?.cover_url, bookSnap?.isbn,
           bookSnap?.publisher, bookSnap?.publication_year
         );
+
+        // Also snapshot any existing reflection into completion_reflections
+        const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
+        if (existingReflection) {
+          db.prepare(`
+            INSERT INTO completion_reflections
+              (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+            ON CONFLICT(book_id) DO UPDATE SET
+              rating=excluded.rating, content=excluded.content,
+              learning=excluded.learning, application=excluded.application,
+              disagreement=excluded.disagreement, saved_at=excluded.saved_at
+          `).run(
+            id, bookSnap?.title, bookSnap?.author,
+            existingReflection.rating, existingReflection.content,
+            existingReflection.learning, existingReflection.application,
+            existingReflection.disagreement
+          );
+        }
       }
 
       res.json({ success: true });
@@ -913,9 +988,10 @@ async function startServer() {
         }
       }
 
-      // 5. Average pages per day (of days active)
+      // 5. Average pages per day (actual pages logged, not total_pages of completed books)
+      const totalPagesLogged = (db.prepare("SELECT COALESCE(SUM(pages_read), 0) as total FROM logs").get() as any).total;
       const activeDaysCount = logDates.length || 1;
-      const averagePagesPerDay = Math.round(totalPagesRead / activeDaysCount);
+      const averagePagesPerDay = Math.round(totalPagesLogged / activeDaysCount);
 
       // 6. Last 35 days trend (5 full weeks to align grid)
       const last35Days = [];
@@ -928,14 +1004,14 @@ async function startServer() {
       for (let i = 34; i >= 0; i--) {
         const d = new Date(now);
         d.setDate(d.getDate() - i);
-        
-        const dateStr = d.toISOString().split('T')[0];
-        const pagesRead = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(dateStr).total || 0;
-        last35Days.push({ 
-          day: d.toLocaleDateString(undefined, { weekday: 'short' }), 
-          pages: pagesRead, 
+        // Use local date to match how today's date is computed in the dashboard status endpoint
+        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+        const pagesRead = (db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(dateStr) as any).total || 0;
+        last35Days.push({
+          day: d.toLocaleDateString(undefined, { weekday: 'short' }),
+          pages: pagesRead,
           fullDate: dateStr,
-          dayOfWeek: d.getDay() // 0-6
+          dayOfWeek: d.getDay()
         });
       }
 
@@ -947,11 +1023,13 @@ async function startServer() {
         LIMIT 3
       `).all();
 
-      // 8. Genre Distribution (Tags)
+      // 8. Genre Distribution (Tags — completed books only)
       const genreDistribution = db.prepare(`
         SELECT t.name, COUNT(bt.book_id) as count
         FROM tags t
         JOIN book_tags bt ON t.id = bt.tag_id
+        JOIN books b ON bt.book_id = b.id
+        WHERE b.status = 'COMPLETED'
         GROUP BY t.id
         ORDER BY count DESC
         LIMIT 6
@@ -970,7 +1048,7 @@ async function startServer() {
       // 10. Reading Consistency Score (Last 30 days)
       const thirtyDaysAgo = new Date();
       thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const dateLimit = thirtyDaysAgo.toISOString().split('T')[0];
+      const dateLimit = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
 
       const activeDaysResult = db.prepare(`
         SELECT COUNT(DISTINCT strftime('%Y-%m-%d', date)) as activeDays
@@ -980,13 +1058,6 @@ async function startServer() {
 
       const activeDays = activeDaysResult?.activeDays || 0;
       const consistencyScore = Math.round((activeDays / 30) * 100);
-
-      // 11. Reflection dates (for wave chart markers)
-      const reflectionDates = db.prepare(`
-        SELECT DISTINCT strftime('%Y-%m-%d', created_at) as date
-        FROM reflections
-        ORDER BY date DESC
-      `).all() as { date: string }[];
 
       let consistencyLevel = "Wandering";
       if (consistencyScore > 80) consistencyLevel = "Unyielding";
@@ -1012,8 +1083,7 @@ async function startServer() {
         trend: last35Days,
         recentReflections,
         genreDistribution,
-        authorDistribution,
-        reflectionDates: reflectionDates.map(r => r.date)
+        authorDistribution
       });
     } catch (error) {
       console.error("Insights Error:", error);

@@ -204,13 +204,19 @@ export default function AddBook({ onBack, onAdded, showToast }: AddBookProps) {
         const book = await res.json();
         // Save tags if any selected
         if (selectedTagIds.length > 0) {
-          await fetch(`/api/books/${book.id}/tags`, {
+          const tagRes = await fetch(`/api/books/${book.id}/tags`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ tagIds: selectedTagIds })
           });
+          if (!tagRes.ok) {
+            showToast?.(`"${formData.title}" added, but tags failed to save.`, "info");
+          } else {
+            showToast?.(`"${formData.title}" added to your library`, "success");
+          }
+        } else {
+          showToast?.(`"${formData.title}" added to your library`, "success");
         }
-        showToast?.(`"${formData.title}" added to your library`, "success");
         onAdded();
       } else {
         const err = await res.json();

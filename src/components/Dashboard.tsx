@@ -17,7 +17,6 @@ interface DashboardProps {
 interface BookCardProps {
   book: Book;
   onSelect: (id: number) => void;
-  key?: any;
 }
 
 function ReadingGoalCard({ completedCount, showToast }: { completedCount: number, showToast?: (message: string, type: 'success' | 'error' | 'info') => void }) {
@@ -56,6 +55,8 @@ function ReadingGoalCard({ completedCount, showToast }: { completedCount: number
         setGoal(updatedGoal);
         setIsEditing(false);
         showToast?.(`Annual goal updated to ${value} books`, "success");
+      } else {
+        showToast?.("Failed to save reading goal", "error");
       }
     } catch (err) {
       console.error("Failed to save goal:", err);
@@ -219,18 +220,19 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
 
   const isSearching = searchQuery.trim().length > 0;
 
-  // Global search filtering
-  const searchResults = books.filter(b =>
-    b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (b.author || '').toLowerCase().includes(searchQuery.toLowerCase())
-  );
-
   // Tag filtering helper
   const matchesTags = (book: Book) => {
     if (selectedTagIds.length === 0) return true;
     const bookTagIds = (book.tags || []).map(t => t.id);
     return selectedTagIds.some(tagId => bookTagIds.includes(tagId));
   };
+
+  // Global search filtering (also respects active tag filters)
+  const searchResults = books.filter(b =>
+    (b.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+    (b.author || '').toLowerCase().includes(searchQuery.toLowerCase())) &&
+    matchesTags(b)
+  );
 
   // Tab filtering (only used when not searching)
   const tabBooks = books.filter(b => {
@@ -370,7 +372,8 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
             </div>
           ) : (
             <div className="bg-surface-container-highest/30 rounded-[1.5rem] p-16 text-center border-2 border-dashed border-outline-variant/20">
-              <p className="serif-text text-xl text-on-surface-variant">Your sanctum is quiet.</p>
+              <p className="serif-text text-xl text-on-surface-variant">No book in progress.</p>
+              <p className="text-sm text-outline-variant mt-2">Start reading a book and log your first pages to track your progress here.</p>
               <button onClick={onAddBook} className="mt-4 font-label text-[11px] uppercase tracking-widest font-bold text-primary">New Entry</button>
             </div>
           )}

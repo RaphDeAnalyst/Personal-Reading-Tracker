@@ -142,6 +142,9 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
         if (data.logId && !currentLogId) {
           setCurrentLogId(data.logId);
         }
+        if (data.status === 'COMPLETED') {
+          onFinish();
+        }
       } else {
         console.warn("Background progress sync failed");
       }
@@ -163,18 +166,19 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
     }
   };
 
+  const nextPageRef = useRef(nextPage);
+  const prevPageRef = useRef(prevPage);
+  nextPageRef.current = nextPage;
+  prevPageRef.current = prevPage;
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
-      if (e.key === 'ArrowRight') {
-        nextPage();
-      } else if (e.key === 'ArrowLeft') {
-        prevPage();
-      }
+      if (e.key === 'ArrowRight') nextPageRef.current();
+      else if (e.key === 'ArrowLeft') prevPageRef.current();
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [pdf, currentPage, nextPage, prevPage]);
+  }, []);
 
   if (loading) {
     return (
@@ -205,7 +209,7 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
   return (
     <div className="fixed inset-0 z-[100] bg-[#1a1a1a] text-on-surface overflow-hidden flex flex-col">
       {/* Top Controls */}
-      <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 bg-surface-container-highest/10 backdrop-blur-md border-b border-white/5 z-10 transition-opacity hover:opacity-100 opacity-0 md:opacity-100 group">
+      <header className="h-16 flex-shrink-0 flex items-center justify-between px-6 bg-surface-container-highest/10 backdrop-blur-md border-b border-white/5 z-10">
         <div className="flex items-center gap-4">
           <button onClick={onBack} className="p-2 text-white/70 hover:text-white transition-colors">
             <Icon icon={X} size="lg" className="text-white/70" />

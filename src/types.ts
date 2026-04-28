@@ -35,8 +35,6 @@ export interface ReadingLog {
   created_at: string;
 }
 
-export type Log = ReadingLog;
-
 export interface Reflection {
   id: number;
   book_id: number;
@@ -55,7 +53,7 @@ export interface ReadingGoal {
 }
 
 export interface BookDetail extends Book {
-  logs: Log[];
+  logs: ReadingLog[];
   reflection: Reflection | null;
   tags?: Tag[];
 }

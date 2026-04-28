@@ -3,7 +3,7 @@
  * SPDX-License-Identifier: Apache-2.0
  */
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import Dashboard from './components/Dashboard';
 import AddBook from './components/AddBook';
@@ -108,13 +108,14 @@ export default function App() {
     return (localStorage.getItem('reading-theme') as 'light' | 'dark') || 'light';
   });
 
-  const showToast = (message: string, type: 'success' | 'error' | 'info' = 'info') => {
-    const id = Date.now();
+  const toastCounter = useRef(0);
+  const showToast = useCallback((message: string, type: 'success' | 'error' | 'info' = 'info') => {
+    const id = ++toastCounter.current;
     setToasts(prev => [...prev, { id, message, type }]);
     setTimeout(() => {
       setToasts(prev => prev.filter(t => t.id !== id));
     }, 4000);
-  };
+  }, []);
 
   const toggleFont = () => {
     const next = fontPreference === 'serif' ? 'sans' : 'serif';
@@ -158,7 +159,7 @@ export default function App() {
   useEffect(() => {
     checkStatus();
     fetchBooks();
-  }, [view]);
+  }, []);
 
   useEffect(() => {
     const handlePopState = (event: PopStateEvent) => {
@@ -286,7 +287,7 @@ export default function App() {
         <>
           <Sidebar
             isOpen={isSidebarOpen}
-            onClose={() => setIsSidebarOpen(!isSidebarOpen)}
+            onClose={() => setIsSidebarOpen(false)}
             onNavigate={(v) => {
               navigateTo(v);
               setIsSidebarOpen(false);
@@ -332,7 +333,7 @@ export default function App() {
                 if (view.type === 'detail') navigateTo({ type: 'dashboard' });
                 else if (view.type === 'reflection') navigateTo({ type: 'reflection-index' });
                 else if (view.type === 'reflection-index') navigateTo({ type: 'dashboard' });
-                else if (view.type === 'log-progress') navigateTo({ type: 'detail', bookId: (view as any).bookId });
+                else if (view.type === 'log-progress') navigateTo({ type: 'detail', bookId: view.bookId });
                 else if (view.type === 'insights') navigateTo({ type: 'dashboard' });
                 else navigateTo({ type: 'dashboard' });
               }}
@@ -379,7 +380,7 @@ export default function App() {
       <main className={`transition-all duration-300 ${isReading ? 'p-0 pt-0 max-w-none' : (showAlert && !loggedToday ? 'pt-32' : 'pt-20')} pb-32 px-6 max-w-5xl mx-auto`}>
         <AnimatePresence mode="wait">
           <motion.div
-            key={view.type + (view.type === 'detail' || view.type === 'reflection' || view.type === 'log-progress' || view.type === 'reader' ? (view as any).bookId : '')}
+            key={view.type + ('bookId' in view ? view.bookId : '')}
             initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
             exit={{ opacity: 0, y: -10 }}
