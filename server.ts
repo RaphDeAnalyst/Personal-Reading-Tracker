@@ -639,11 +639,30 @@ async function startServer() {
 
       if (effectiveCurrentPage !== undefined) {
         newCurrentPage = Math.min(effectiveCurrentPage, book.total_pages);
-        // For digital reading, we might update the same log.
-        // If we are updating a log, we need the previous current_page from either the book or the log itself.
-        // But the server-side calculation of pagesRead based on book.current_page is only valid for NEW logs.
-        if (!logId) {
-          actualPagesRead = Math.max(0, newCurrentPage - (book.current_page || 0));
+
+        if (logId) {
+          // Updating an existing log (PDF reader session): client owns pages_read accounting.
+          // If pagesRead is provided use it; otherwise derive from the log's own starting page.
+          if (pagesRead !== undefined) {
+            actualPagesRead = pagesRead;
+          } else {
+            const existingLog = db.prepare("SELECT current_page FROM logs WHERE id = ?").get(logId) as any;
+            const sessionStartPage = existingLog
+              ? (existingLog.current_page - (existingLog.pages_read ?? 0))
+              : (book.current_page || 0);
+            actualPagesRead = Math.max(0, newCurrentPage - sessionStartPage);
+          }
+        } else {
+          // New log from absolute page (physical book / LogProgressView).
+          // Guard: refuse to move the book backward — this prevents accidental typos
+          // from corrupting the cumulative pages_read total.
+          if (newCurrentPage < (book.current_page || 0)) {
+            return res.status(400).json({
+              error: "Page cannot go backward. Enter a page number greater than your current progress.",
+              current_page: book.current_page
+            });
+          }
+          actualPagesRead = newCurrentPage - (book.current_page || 0);
         }
       } else {
         newCurrentPage = Math.min((book.current_page || 0) + (pagesRead || 0), book.total_pages);
@@ -663,21 +682,10 @@ async function startServer() {
       db.transaction(() => {
         db.prepare("UPDATE books SET current_page = ?, status = ? WHERE id = ?")
           .run(newCurrentPage, newStatus, id);
-        
+
         if (logId) {
-          // Update existing log
-          // We need to re-calculate pages_read based on the start of the session
-          // but simpler is to let the client provide pagesRead if they are managing the session.
-          if (pagesRead !== undefined) {
-            db.prepare("UPDATE logs SET pages_read = ?, current_page = ? WHERE id = ?")
-              .run(pagesRead, newCurrentPage, logId);
-          } else if (effectiveCurrentPage !== undefined) {
-            // If only current_page is provided, we might not know how many pages were read in total
-            // unless we know the page when the log was first created.
-            // For now, let's assume if logId is provided, the client should ideally provide pagesRead too.
-            db.prepare("UPDATE logs SET current_page = ? WHERE id = ?")
-              .run(newCurrentPage, logId);
-          }
+          db.prepare("UPDATE logs SET pages_read = ?, current_page = ? WHERE id = ?")
+            .run(actualPagesRead, newCurrentPage, logId);
         } else {
           const info = db.prepare("INSERT INTO logs (book_id, date, pages_read, current_page) VALUES (?, ?, ?, ?)")
             .run(id, logDate, actualPagesRead, newCurrentPage);
@@ -716,12 +724,13 @@ async function startServer() {
       const { id } = req.params;
       const deleteBook = db.transaction(() => {
         db.prepare("DELETE FROM reflections WHERE book_id = ?").run(id);
-        db.prepare("DELETE FROM logs WHERE book_id = ?").run(id);
+        // Logs are intentionally kept — they record real reading activity on real days.
+        // Deleting them would erase pages-read-today, heatmap, and streak history.
         db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(id);
         db.prepare("DELETE FROM books WHERE id = ?").run(id);
       });
       deleteBook();
-      console.log(`Book ${id} decommissioned from archive`);
+      console.log(`Book ${id} removed from library`);
       res.json({ success: true });
     } catch (error) {
       console.error("Error deleting book:", error);

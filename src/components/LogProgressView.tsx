@@ -48,6 +48,11 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
       return;
     }
 
+    if (book && targetPage < (book.current_page || 0)) {
+      showToast?.(`You're on page ${book.current_page}. Enter a higher page to log progress.`, "error");
+      return;
+    }
+
     setLoading(true);
     try {
       const res = await fetch(`/api/books/${bookId}/logs`, {
@@ -63,11 +68,12 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
           onSaved();
         }
       } else {
-        showToast?.("Failed to save progress", "error");
+        const errData = await res.json().catch(() => ({}));
+        showToast?.(errData.error || "Failed to save progress", "error");
       }
     } catch (e) {
       console.error("Log error", e);
-      showToast?.("Network error while archiving progress", "error");
+      showToast?.("Network error. Progress was not saved.", "error");
     } finally {
       setLoading(false);
     }
