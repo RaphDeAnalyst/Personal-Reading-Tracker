@@ -1,7 +1,7 @@
 import { motion, AnimatePresence } from 'motion/react';
 import type { LucideIcon } from 'lucide-react';
 import Icon from './Icon';
-import { Library, Plus, BookMarked, BarChart2, X, Moon, Sun } from 'lucide-react';
+import { Library, Plus, BookMarked, BarChart2, Archive, X, Moon, Sun } from 'lucide-react';
 
 interface SidebarProps {
   isOpen: boolean;
@@ -25,6 +25,7 @@ export default function Sidebar({ isOpen, onClose, onNavigate, currentView, them
     { id: 'add', label: 'Add New Book', icon: Plus },
     { id: 'reflection-index', label: 'Reflections', icon: BookMarked },
     { id: 'insights', label: 'Insights', icon: BarChart2 },
+    { id: 'archive', label: 'Reading Archive', icon: Archive },
   ];
 
   return (

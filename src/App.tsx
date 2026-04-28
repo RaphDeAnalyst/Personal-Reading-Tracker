@@ -15,12 +15,13 @@ import ReflectionIndexView from './components/ReflectionIndexView';
 import PDFReader from './components/PDFReader';
 import Sidebar from './components/Sidebar';
 import InsightsView from './components/InsightsView';
+import ReadingArchiveView from './components/ReadingArchiveView';
 import Icon from './components/Icon';
 import { Book as BookType } from './types';
 import {
   ArrowLeft, Menu, BarChart2, Moon, Sun, X,
   CheckCircle, AlertCircle, Info,
-  BookOpen, Plus, PenLine, Quote
+  BookOpen, Plus, PenLine, Quote, Archive
 } from 'lucide-react';
 
 
@@ -33,6 +34,7 @@ type View =
   | { type: 'log-progress'; bookId: number }
   | { type: 'reader'; bookId: number }
   | { type: 'insights' }
+  | { type: 'archive' }
   | { type: 'success'; bookId: number };
 
 export interface Toast {
@@ -61,6 +63,8 @@ const parseViewFromUrl = (): View => {
       return bookId ? { type: 'reader', bookId: parseInt(bookId) } : { type: 'dashboard' };
     case 'insights':
       return { type: 'insights' };
+    case 'archive':
+      return { type: 'archive' };
     case 'success':
       return bookId ? { type: 'success', bookId: parseInt(bookId) } : { type: 'dashboard' };
     default:
@@ -80,6 +84,8 @@ const updateUrl = (newView: View) => {
     query = '?view=reflection-index';
   } else if (newView.type === 'insights') {
     query = '?view=insights';
+  } else if (newView.type === 'archive') {
+    query = '?view=archive';
   }
 
   const newUrl = `${window.location.pathname}${query}`;
@@ -228,6 +234,15 @@ export default function App() {
             onToggleFont={toggleFont}
             theme={theme}
             onToggleTheme={toggleTheme}
+            onSelectBook={(bookId) => navigateTo({ type: 'detail', bookId })}
+            onOpenReader={(bookId) => navigateTo({ type: 'reader', bookId })}
+            onWriteReflection={(bookId) => navigateTo({ type: 'reflection', bookId })}
+          />
+        );
+      case 'archive':
+        return (
+          <ReadingArchiveView
+            showToast={showToast}
             onSelectBook={(bookId) => navigateTo({ type: 'detail', bookId })}
             onOpenReader={(bookId) => navigateTo({ type: 'reader', bookId })}
             onWriteReflection={(bookId) => navigateTo({ type: 'reflection', bookId })}
@@ -437,6 +452,20 @@ export default function App() {
         >
           <Icon icon={Quote} size="md" variant={view.type === 'reflection-index' || view.type === 'reflection' ? 'inverted' : 'inherit'} />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Reflections</span>
+        </button>
+        <button
+          onClick={() => navigateTo({ type: 'insights' })}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'insights' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
+        >
+          <Icon icon={BarChart2} size="md" variant={view.type === 'insights' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Insights</span>
+        </button>
+        <button
+          onClick={() => navigateTo({ type: 'archive' })}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'archive' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'}`}
+        >
+          <Icon icon={Archive} size="md" variant={view.type === 'archive' ? 'inverted' : 'inherit'} />
+          <span className="font-label text-[10px] uppercase tracking-widest font-bold">Archive</span>
         </button>
       </nav>
       )}

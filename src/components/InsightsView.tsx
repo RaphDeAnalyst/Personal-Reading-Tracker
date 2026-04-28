@@ -4,7 +4,7 @@ import Icon from './Icon';
 import {
   Target, TrendingUp, Activity, Lightbulb, Settings,
   HelpCircle, Moon, Sun, Quote, Star, Edit, Brain,
-  Timer, FolderOpen, Pen, BookOpen, Archive, Calendar
+  Timer, FolderOpen, Pen, BookOpen, Calendar
 } from 'lucide-react';
 
 
@@ -26,24 +26,6 @@ interface InsightsData {
   reflectionDates?: string[];
 }
 
-interface GoalReadingEntry {
-  id: number;
-  year: number;
-  book_id: number;
-  completed_at: string;
-  title: string;
-  author: string;
-  cover_url: string | null;
-  mode: 'PHYSICAL' | 'DIGITAL' | null;
-  pdf_file_path: string | null;
-  book_exists: number;
-  reflection_id: number | null;
-  rating: number | null;
-  content: string | null;
-  learning: string | null;
-  application: string | null;
-  disagreement: string | null;
-}
 
 function DistributionChart({ title, data, icon, total }: { title: string; data: { name: string; count: number }[]; icon: any, total: number }) {
   const maxCount = Math.max(...data.map(d => d.count), 1);
@@ -114,8 +96,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
   const [editingGoal, setEditingGoal] = useState(false);
   const [goalInput, setGoalInput] = useState('');
   const [savingGoal, setSavingGoal] = useState(false);
-  const [goalReadingList, setGoalReadingList] = useState<GoalReadingEntry[]>([]);
-  const [selectedGoalYear, setSelectedGoalYear] = useState<number>(new Date().getFullYear());
   const [monthlyStats, setMonthlyStats] = useState<MonthlyStatEntry[]>([]);
   const [allGoals, setAllGoals] = useState<GoalData[]>([]);
   const [selectedMonthlyYear, setSelectedMonthlyYear] = useState<number>(new Date().getFullYear());
@@ -124,10 +104,9 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
     const fetchInsights = async () => {
       try {
         const currentYear = new Date().getFullYear();
-        const [insightsRes, goalRes, readingListRes, monthlyRes, allGoalsRes] = await Promise.all([
+        const [insightsRes, goalRes, monthlyRes, allGoalsRes] = await Promise.all([
           fetch('/api/insights'),
           fetch(`/api/goals/${currentYear}`),
-          fetch('/api/goals/reading-list'),
           fetch('/api/goals/monthly-stats'),
           fetch('/api/goals/all'),
         ]);
@@ -138,10 +117,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           const goalJson = await goalRes.json();
           setGoal(goalJson);
           setGoalInput(goalJson.target_value?.toString() || '');
-        }
-        if (readingListRes.ok) {
-          const readingListData = await readingListRes.json();
-          setGoalReadingList(readingListData);
         }
         if (monthlyRes.ok) {
           setMonthlyStats(await monthlyRes.json());
@@ -549,137 +524,6 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
               )}
             </div>
           </section>
-
-          {/* Reading Archive */}
-          {goalReadingList.length > 0 && (
-            <section className="col-span-full">
-              <div className="bg-surface-container-low p-8 rounded-2xl border border-outline-variant/10 shadow-sm">
-                <div className="flex items-center gap-2 mb-6">
-                  <Icon icon={Archive} size="md" variant="muted" />
-                  <h2 className="font-serif text-lg text-on-surface">Reading Archive</h2>
-                </div>
-
-                {/* Year tabs */}
-                {(() => {
-                  const availableYears = [...new Set(goalReadingList.map(e => e.year))].sort((a, b) => b - a);
-                  const filteredList = goalReadingList.filter(e => e.year === selectedGoalYear);
-
-                  return (
-                    <>
-                      <div className="flex gap-2 mb-6 flex-wrap">
-                        {availableYears.map(year => (
-                          <button
-                            key={year}
-                            onClick={() => setSelectedGoalYear(year)}
-                            className={`px-3 py-1 rounded-full text-sm transition-colors
-                              ${selectedGoalYear === year
-                                ? 'bg-primary text-on-primary'
-                                : 'bg-surface-container text-on-surface-variant hover:bg-surface-container-high'}`}
-                          >
-                            {year}
-                          </button>
-                        ))}
-                      </div>
-
-                      {/* Book list */}
-                      {filteredList.length === 0 ? (
-                        <div className="flex flex-col items-center gap-3 py-12 text-on-surface-variant">
-                          <Icon icon={BookOpen} size="xl" variant="muted" />
-                          <p className="text-sm">No books completed toward your {selectedGoalYear} goal yet.</p>
-                        </div>
-                      ) : (
-                        <div className="flex flex-col divide-y divide-outline-variant/20">
-                          {filteredList.map(entry => {
-                            const reflectionSnippet = entry.learning || entry.content || '';
-                            const displayDate = new Date(entry.completed_at).toLocaleDateString('en-US', {
-                              year: 'numeric',
-                              month: 'short',
-                              day: 'numeric'
-                            });
-
-                            return (
-                              <div key={entry.id} className="py-4 first:pt-0 last:pb-0 flex gap-4">
-                                {/* Cover thumbnail */}
-                                <div className="w-10 h-14 bg-surface-container rounded flex-shrink-0 flex items-center justify-center overflow-hidden">
-                                  {entry.cover_url ? (
-                                    <img src={entry.cover_url} alt={entry.title} className="w-full h-full object-cover" />
-                                  ) : (
-                                    <Icon icon={BookOpen} size="md" variant="muted" />
-                                  )}
-                                </div>
-
-                                {/* Content */}
-                                <div className="flex-1 min-w-0">
-                                  <div className="flex items-start justify-between gap-3 mb-1">
-                                    <div className="min-w-0">
-                                      <h4 className="font-serif text-sm text-on-surface truncate">{entry.title}</h4>
-                                      <p className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant">{entry.author}</p>
-                                    </div>
-                                    {!entry.book_exists && (
-                                      <span className="text-xs bg-error/10 text-error px-2 py-1 rounded whitespace-nowrap flex-shrink-0">Removed</span>
-                                    )}
-                                  </div>
-
-                                  <p className="text-xs text-on-surface-variant mb-2">{displayDate}</p>
-
-                                  {/* Star rating */}
-                                  {entry.rating && (
-                                    <div className="flex gap-0.5 mb-2">
-                                      {[...Array(5)].map((_, idx) => (
-                                        <Icon
-                                          key={idx}
-                                          icon={Star}
-                                          size="xs"
-                                          className={idx < entry.rating! ? 'fill-tertiary text-tertiary' : 'text-outline-variant/30'}
-                                        />
-                                      ))}
-                                    </div>
-                                  )}
-
-                                  {/* Reflection snippet */}
-                                  {reflectionSnippet && (
-                                    <p className="text-xs text-on-surface-variant italic line-clamp-2 mb-2">"{reflectionSnippet}"</p>
-                                  )}
-
-                                  {/* Action buttons */}
-                                  <div className="flex gap-2 flex-wrap">
-                                    {entry.book_exists && (
-                                      <>
-                                        <button
-                                          onClick={() => onSelectBook?.(entry.book_id)}
-                                          className="text-xs px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
-                                        >
-                                          View
-                                        </button>
-                                        {entry.mode === 'DIGITAL' && entry.pdf_file_path && (
-                                          <button
-                                            onClick={() => onOpenReader?.(entry.book_id)}
-                                            className="text-xs px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
-                                          >
-                                            Read
-                                          </button>
-                                        )}
-                                      </>
-                                    )}
-                                    <button
-                                      onClick={() => onWriteReflection?.(entry.book_id)}
-                                      className="text-xs px-2.5 py-1.5 rounded-lg bg-surface-container hover:bg-surface-container-high text-on-surface transition-colors"
-                                    >
-                                      {entry.reflection_id ? 'Edit' : 'Write'} Reflection
-                                    </button>
-                                  </div>
-                                </div>
-                              </div>
-                            );
-                          })}
-                        </div>
-                      )}
-                    </>
-                  );
-                })()}
-              </div>
-            </section>
-          )}
 
           {/* Preferences Card */}
           <section className="bg-primary/5 p-6 rounded-2xl border border-primary/10">
