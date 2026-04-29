@@ -2,8 +2,7 @@ import { useState, useEffect } from 'react';
 import { Book, ReadingGoal, Tag } from '../types';
 import Icon from './Icon';
 import {
-  Flame, Plus, PlayCircle, Search, X, BookOpen,
-  PackageOpen, Edit, MoreVertical, Loader2
+  Flame, Plus, PlayCircle, Search, X, BookOpen, PackageOpen
 } from 'lucide-react';
 
 
