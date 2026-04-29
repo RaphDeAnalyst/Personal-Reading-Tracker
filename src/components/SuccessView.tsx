@@ -15,8 +15,12 @@ export default function SuccessView({ bookId, onFinish, onViewJournal }: Success
 
   useEffect(() => {
     fetch(`/api/books/${bookId}`)
-      .then(res => res.json())
-      .then(setBookDetail);
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed: ${res.status}`);
+        return res.json();
+      })
+      .then(setBookDetail)
+      .catch(err => console.error("Failed to load book for success view:", err));
   }, [bookId]);
 
   if (!bookDetail) return (

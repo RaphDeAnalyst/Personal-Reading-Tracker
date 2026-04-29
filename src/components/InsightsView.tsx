@@ -249,7 +249,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
           icon={Activity}
           color="text-secondary"
           description={data.stats.consistencyLevel}
-          tooltip="Percentage of the last 35 days where you read at least one page — a measure of reading regularity"
+          tooltip="Percentage of the last 30 days where you read at least one page — a measure of reading regularity"
         />
       </div>
 
@@ -303,7 +303,9 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                   <div className="flex-1">
                     <div className="flex justify-between items-center mb-2">
                       <span className="font-label text-[9px] uppercase tracking-widest text-on-surface font-bold">{goalCompletionsCount} / {goal.target_value} books</span>
-                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">{Math.round(goalCompletionsCount / goal.target_value * 100)}%</span>
+                      <span className="font-label text-[9px] uppercase tracking-widest text-on-surface-variant font-bold">
+                        {goalCompletionsCount >= goal.target_value ? '100% ✓' : `${Math.round(goalCompletionsCount / goal.target_value * 100)}%`}
+                      </span>
                     </div>
                     <div className="h-2.5 w-full bg-surface-container-highest rounded-full overflow-hidden border border-outline-variant/5">
                       <motion.div
@@ -317,7 +319,7 @@ export default function InsightsView({ showToast, fontPreference, onToggleFont, 
                     </div>
                   </div>
                   <span className="font-headline text-xl text-secondary font-medium min-w-fit">
-                    {Math.max(goal.target_value - goalCompletionsCount, 0)}
+                    {goalCompletionsCount >= goal.target_value ? '🎉' : goal.target_value - goalCompletionsCount}
                   </span>
                 </div>
                 <div className="flex items-end justify-between gap-4">

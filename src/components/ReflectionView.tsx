@@ -96,8 +96,8 @@ export default function ReflectionView({ bookId, onBack, onComplete, showToast }
         disagreement.trim().length > 0;
 
       if (hasAnyContent) {
-        // Save what we have (could be full or partial)
-        const content = `Learning: ${learning}\nApplication: ${application}\nDisagreement: ${disagreement}`;
+        // Build content using the active lens's labels so the saved text is semantically correct
+        const content = `${activeSet.prompts[0]}: ${learning}\n${activeSet.prompts[1]}: ${application}\n${activeSet.prompts[2]}: ${disagreement}`;
         await fetch(`/api/books/${bookId}/reflection`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },

@@ -15,7 +15,7 @@ console.log("--- The Archivist Server: Sequential Startup Initiated ---");
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-let db: any;
+let db: InstanceType<typeof Database>;
 
 const PORT = process.env.PORT || 3000;
 const DB_PATH = process.env.DATABASE_URL || "reading_tracker.db";
@@ -61,9 +61,12 @@ async function startServer() {
   try {
     console.log(`Initializing database connection at ${DB_PATH}...`);
     db = new Database(DB_PATH);
+    db.pragma('journal_mode = WAL');
+    db.pragma('foreign_keys = ON');
 
     // Initialize backup manager
     initializeBackupManager({
+      db,
       dbPath: DB_PATH,
       backupDir: path.join(process.cwd(), "backups"),
       retentionDays: 30,
@@ -149,13 +152,13 @@ async function startServer() {
       db.exec("ALTER TABLE logs ADD COLUMN current_page INTEGER");
     }
 
-    // Migration: Tags (Phase 1 - Basic Tagging)
+    // Tables: tags, reading_goals, goal_completions
     db.exec(`
       CREATE TABLE IF NOT EXISTS tags (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
         name TEXT UNIQUE NOT NULL
       );
-      
+
       CREATE TABLE IF NOT EXISTS book_tags (
         book_id INTEGER NOT NULL,
         tag_id INTEGER NOT NULL,
@@ -180,110 +183,68 @@ async function startServer() {
       );
     `);
 
-    // Backfill goal_completions from existing COMPLETED books
-    const completedBooks = db.prepare("SELECT id, created_at, title, author, total_pages FROM books WHERE status = 'COMPLETED'").all() as any[];
-    const backfill = db.transaction(() => {
-      for (const book of completedBooks) {
-        const bookId = book.id;
-        // Get the most recent log date for this book, or use created_at
-        const latestLog = db.prepare(
-          "SELECT MAX(date) as latest FROM logs WHERE book_id = ?"
-        ).get(bookId) as { latest: string | null };
-
-        const completedDate = latestLog.latest || book.created_at || new Date().toISOString();
-        const year = new Date(completedDate).getFullYear();
-
-        db.prepare(`
-          INSERT OR IGNORE INTO goal_completions (year, book_id, completed_at, title, author, total_pages)
-          VALUES (?, ?, ?, ?, ?, ?)
-        `).run(year, bookId, completedDate, book.title, book.author, book.total_pages);
-      }
-    });
-
-    try {
-      backfill();
-      console.log("✓ Backfilled goal_completions from existing COMPLETED books");
-    } catch (err) {
-      console.log("Note: goal_completions backfill skipped (table may already be populated)");
-    }
-
     db.prepare(`CREATE INDEX IF NOT EXISTS idx_goal_completions_year ON goal_completions(year);`).run();
 
-    // Migration: Add title/author to goal_completions for data persistence
+    // Run ALL goal_completions column migrations BEFORE the backfill so every column exists
     const gcInfo = db.prepare("PRAGMA table_info(goal_completions)").all() as any[];
-    if (!gcInfo.find((c: any) => c.name === 'title')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN title TEXT");
-    }
-    if (!gcInfo.find((c: any) => c.name === 'author')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN author TEXT");
+    const gcHas = (col: string) => gcInfo.some((c: any) => c.name === col);
+    if (!gcHas('title'))            db.exec("ALTER TABLE goal_completions ADD COLUMN title TEXT");
+    if (!gcHas('author'))           db.exec("ALTER TABLE goal_completions ADD COLUMN author TEXT");
+    if (!gcHas('total_pages'))      db.exec("ALTER TABLE goal_completions ADD COLUMN total_pages INTEGER");
+    if (!gcHas('mode'))             db.exec("ALTER TABLE goal_completions ADD COLUMN mode TEXT");
+    if (!gcHas('cover_url'))        db.exec("ALTER TABLE goal_completions ADD COLUMN cover_url TEXT");
+    if (!gcHas('isbn'))             db.exec("ALTER TABLE goal_completions ADD COLUMN isbn TEXT");
+    if (!gcHas('publisher'))        db.exec("ALTER TABLE goal_completions ADD COLUMN publisher TEXT");
+    if (!gcHas('publication_year')) db.exec("ALTER TABLE goal_completions ADD COLUMN publication_year INTEGER");
+
+    // Backfill goal_completions — only insert rows that are genuinely missing (idempotent)
+    const booksToBackfill = db.prepare(`
+      SELECT id, created_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year
+      FROM books
+      WHERE status = 'COMPLETED'
+        AND id NOT IN (SELECT book_id FROM goal_completions)
+    `).all() as any[];
+
+    if (booksToBackfill.length > 0) {
+      db.transaction(() => {
+        for (const book of booksToBackfill) {
+          const latestLog = db.prepare(
+            "SELECT MAX(date) as latest FROM logs WHERE book_id = ?"
+          ).get(book.id) as { latest: string | null };
+          const completedDate = latestLog.latest || book.created_at || new Date().toISOString();
+          const year = new Date(completedDate).getFullYear();
+          db.prepare(`
+            INSERT OR IGNORE INTO goal_completions
+              (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            year, book.id, completedDate,
+            book.title, book.author, book.total_pages,
+            book.mode, book.cover_url, book.isbn,
+            book.publisher, book.publication_year
+          );
+        }
+      })();
+      console.log(`✓ Backfilled goal_completions for ${booksToBackfill.length} completed books`);
     }
 
-    // Backfill title/author for existing goal_completions rows
-    try {
-      db.prepare(`
-        UPDATE goal_completions
-        SET title = (SELECT title FROM books WHERE id = goal_completions.book_id),
-            author = (SELECT author FROM books WHERE id = goal_completions.book_id)
-        WHERE title IS NULL
-      `).run();
-      console.log("✓ Backfilled goal_completions with title/author");
-    } catch (err) {
-      console.log("Note: goal_completions title/author backfill completed or already populated");
-    }
+    // Patch any existing rows that are missing snapshot fields (from earlier schema versions)
+    db.prepare(`
+      UPDATE goal_completions
+      SET
+        title            = COALESCE(title,            (SELECT title            FROM books WHERE id = goal_completions.book_id)),
+        author           = COALESCE(author,            (SELECT author           FROM books WHERE id = goal_completions.book_id)),
+        total_pages      = COALESCE(total_pages,       (SELECT total_pages      FROM books WHERE id = goal_completions.book_id)),
+        mode             = COALESCE(mode,              (SELECT mode             FROM books WHERE id = goal_completions.book_id)),
+        cover_url        = COALESCE(cover_url,         (SELECT cover_url        FROM books WHERE id = goal_completions.book_id)),
+        isbn             = COALESCE(isbn,              (SELECT isbn             FROM books WHERE id = goal_completions.book_id)),
+        publisher        = COALESCE(publisher,         (SELECT publisher        FROM books WHERE id = goal_completions.book_id)),
+        publication_year = COALESCE(publication_year,  (SELECT publication_year FROM books WHERE id = goal_completions.book_id))
+      WHERE EXISTS (SELECT 1 FROM books WHERE id = goal_completions.book_id)
+        AND (title IS NULL OR mode IS NULL OR total_pages IS NULL)
+    `).run();
 
-    // Migration: Add total_pages to goal_completions for immutable reading stats
-    if (!gcInfo.find((c: any) => c.name === 'total_pages')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN total_pages INTEGER");
-    }
-
-    // Backfill total_pages for existing goal_completions rows
-    try {
-      db.prepare(`
-        UPDATE goal_completions
-        SET total_pages = (SELECT total_pages FROM books WHERE id = goal_completions.book_id)
-        WHERE total_pages IS NULL
-      `).run();
-      console.log("✓ Backfilled goal_completions with total_pages");
-    } catch (err) {
-      console.log("Note: goal_completions total_pages backfill completed or already populated");
-    }
-
-    // Migration: Snapshot mode, cover_url, isbn, publisher, publication_year on goal_completions
-    if (!gcInfo.find((c: any) => c.name === 'mode')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN mode TEXT");
-    }
-    if (!gcInfo.find((c: any) => c.name === 'cover_url')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN cover_url TEXT");
-    }
-    if (!gcInfo.find((c: any) => c.name === 'isbn')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN isbn TEXT");
-    }
-    if (!gcInfo.find((c: any) => c.name === 'publisher')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN publisher TEXT");
-    }
-    if (!gcInfo.find((c: any) => c.name === 'publication_year')) {
-      db.exec("ALTER TABLE goal_completions ADD COLUMN publication_year INTEGER");
-    }
-
-    // Backfill new snapshot columns from books that still exist in the library
-    try {
-      db.prepare(`
-        UPDATE goal_completions
-        SET
-          mode             = (SELECT mode             FROM books WHERE id = goal_completions.book_id),
-          cover_url        = (SELECT cover_url        FROM books WHERE id = goal_completions.book_id),
-          isbn             = (SELECT isbn             FROM books WHERE id = goal_completions.book_id),
-          publisher        = (SELECT publisher        FROM books WHERE id = goal_completions.book_id),
-          publication_year = (SELECT publication_year FROM books WHERE id = goal_completions.book_id)
-        WHERE mode IS NULL
-          AND EXISTS (SELECT 1 FROM books WHERE id = goal_completions.book_id)
-      `).run();
-      console.log("✓ Backfilled goal_completions with book snapshot fields");
-    } catch (err) {
-      console.log("Note: goal_completions snapshot backfill completed or already populated");
-    }
-
-    // Migration: Create completion_reflections table (immutable reflection snapshots)
+    // completion_reflections: immutable reflection snapshots
     db.exec(`
       CREATE TABLE IF NOT EXISTS completion_reflections (
         id            INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -299,21 +260,16 @@ async function startServer() {
       );
     `);
 
-    // Backfill completion_reflections from existing reflections (for completed books, INSERT OR IGNORE to preserve existing snapshots)
-    try {
-      db.prepare(`
-        INSERT OR IGNORE INTO completion_reflections
-          (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
-        SELECT
-          r.book_id, b.title, b.author, r.rating, r.content, r.learning, r.application, r.disagreement, r.created_at
-        FROM reflections r
-        JOIN books b ON r.book_id = b.id
-        WHERE b.status = 'COMPLETED'
-      `).run();
-      console.log("✓ Backfilled completion_reflections from existing reflections");
-    } catch (err) {
-      console.log("Note: completion_reflections backfill completed or already populated");
-    }
+    db.prepare(`
+      INSERT OR IGNORE INTO completion_reflections
+        (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+      SELECT
+        r.book_id, b.title, b.author, r.rating, r.content, r.learning, r.application, r.disagreement, r.created_at
+      FROM reflections r
+      JOIN books b ON r.book_id = b.id
+      WHERE b.status = 'COMPLETED'
+    `).run();
+    console.log("✓ Migrations complete");
 
   app.use(express.json());
   app.use("/uploads", express.static(uploadsDir));
@@ -334,7 +290,11 @@ async function startServer() {
 
       // Clean ISBN (remove dashes/spaces)
       const cleanIsbn = isbn.replace(/[-\s]/g, "");
-      if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
+      if (cleanIsbn.length === 13 && !/^\d{13}$/.test(cleanIsbn)) {
+        return res.status(400).json({ error: "Invalid ISBN-13: must be exactly 13 digits." });
+      } else if (cleanIsbn.length === 10 && !/^\d{9}[\dXx]$/.test(cleanIsbn)) {
+        return res.status(400).json({ error: "Invalid ISBN-10: must be 9 digits followed by a digit or X." });
+      } else if (cleanIsbn.length !== 10 && cleanIsbn.length !== 13) {
         return res.status(400).json({ error: "Invalid ISBN format. Must be 10 or 13 digits." });
       }
 
@@ -566,16 +526,27 @@ async function startServer() {
       if (!Array.isArray(tagIds)) {
         return res.status(400).json({ error: "tagIds must be an array" });
       }
-      
+
+      if (tagIds.some((tid: any) => !Number.isInteger(tid) || tid <= 0)) {
+        return res.status(400).json({ error: "All tagIds must be positive integers" });
+      }
+
       const bookExists = db.prepare("SELECT id FROM books WHERE id = ?").get(bookId);
       if (!bookExists) {
         return res.status(404).json({ error: "Volume not found" });
       }
-      
+
+      // Verify all supplied tag IDs exist
+      if (tagIds.length > 0) {
+        const placeholders = tagIds.map(() => '?').join(',');
+        const foundTags = db.prepare(`SELECT COUNT(*) as count FROM tags WHERE id IN (${placeholders})`).get(...tagIds) as any;
+        if (foundTags.count !== tagIds.length) {
+          return res.status(400).json({ error: "One or more tag IDs do not exist" });
+        }
+      }
+
       db.transaction(() => {
-        // Remove existing tags
         db.prepare("DELETE FROM book_tags WHERE book_id = ?").run(bookId);
-        // Add new tags
         if (tagIds.length > 0) {
           const insert = db.prepare("INSERT INTO book_tags (book_id, tag_id) VALUES (?, ?)");
           for (const tagId of tagIds) {
@@ -629,7 +600,7 @@ async function startServer() {
       const book = db.prepare("SELECT * FROM books WHERE id = ?").get(req.params.id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
       
-      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY id DESC").all(req.params.id);
+      const logs = db.prepare("SELECT * FROM logs WHERE book_id = ? ORDER BY id DESC LIMIT 100").all(req.params.id);
       const reflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(req.params.id);
       
       res.json({ ...book, logs, reflection });
@@ -707,6 +678,7 @@ async function startServer() {
 
       let returnedLogId = logId;
 
+      // All writes — including archive records — are atomic
       db.transaction(() => {
         db.prepare("UPDATE books SET current_page = ?, status = ? WHERE id = ?")
           .run(newCurrentPage, newStatus, id);
@@ -719,44 +691,42 @@ async function startServer() {
             .run(id, logDate, actualPagesRead, newCurrentPage);
           returnedLogId = info.lastInsertRowid;
         }
-      })();
 
-      // Record completion in goal_completions if book just became COMPLETED
-      if (newStatus === 'COMPLETED' && book.status !== 'COMPLETED') {
-        const year = new Date().getFullYear();
-        const bookForGoal = db.prepare(
-          "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
-        ).get(id) as any;
-        db.prepare(`
-          INSERT OR IGNORE INTO goal_completions
-            (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          year, id, new Date().toISOString(),
-          bookForGoal?.title, bookForGoal?.author, bookForGoal?.total_pages,
-          bookForGoal?.mode, bookForGoal?.cover_url, bookForGoal?.isbn,
-          bookForGoal?.publisher, bookForGoal?.publication_year
-        );
-
-        // Also snapshot any existing reflection into completion_reflections
-        const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
-        if (existingReflection) {
+        if (newStatus === 'COMPLETED' && book.status !== 'COMPLETED') {
+          const year = new Date().getFullYear();
+          const bookSnap = db.prepare(
+            "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
+          ).get(id) as any;
           db.prepare(`
-            INSERT INTO completion_reflections
-              (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(book_id) DO UPDATE SET
-              rating=excluded.rating, content=excluded.content,
-              learning=excluded.learning, application=excluded.application,
-              disagreement=excluded.disagreement, saved_at=excluded.saved_at
+            INSERT OR IGNORE INTO goal_completions
+              (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
           `).run(
-            id, bookForGoal?.title, bookForGoal?.author,
-            existingReflection.rating, existingReflection.content,
-            existingReflection.learning, existingReflection.application,
-            existingReflection.disagreement
+            year, id, new Date().toISOString(),
+            bookSnap?.title, bookSnap?.author, bookSnap?.total_pages,
+            bookSnap?.mode, bookSnap?.cover_url, bookSnap?.isbn,
+            bookSnap?.publisher, bookSnap?.publication_year
           );
+
+          const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
+          if (existingReflection) {
+            db.prepare(`
+              INSERT INTO completion_reflections
+                (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(book_id) DO UPDATE SET
+                rating=excluded.rating, content=excluded.content,
+                learning=excluded.learning, application=excluded.application,
+                disagreement=excluded.disagreement, saved_at=excluded.saved_at
+            `).run(
+              id, bookSnap?.title, bookSnap?.author,
+              existingReflection.rating, existingReflection.content,
+              existingReflection.learning, existingReflection.application,
+              existingReflection.disagreement
+            );
+          }
         }
-      }
+      })();
 
       res.json({ success: true, current_page: newCurrentPage, status: newStatus, logId: returnedLogId });
     } catch (error) {
@@ -796,6 +766,14 @@ async function startServer() {
         return res.status(400).json({ error: `Invalid status. Must be one of: ${VALID_STATUSES.join(', ')}` });
       }
 
+      // C3: validate current_page is a non-negative integer
+      if (current_page !== undefined) {
+        const parsedPage = Number(current_page);
+        if (!Number.isInteger(parsedPage) || parsedPage < 0) {
+          return res.status(400).json({ error: "current_page must be a non-negative integer" });
+        }
+      }
+
       const book = db.prepare("SELECT status, title, author, total_pages FROM books WHERE id = ?").get(id) as any;
       if (!book) return res.status(404).json({ error: "Book not found" });
 
@@ -804,7 +782,6 @@ async function startServer() {
       if (status !== undefined) {
         updates.push("status = ?");
         params.push(status);
-        // Ensure current_page reaches total_pages when marking complete
         if (status === 'COMPLETED') {
           updates.push("current_page = ?");
           params.push(book.total_pages);
@@ -812,50 +789,51 @@ async function startServer() {
       }
       if (current_page !== undefined && status !== 'COMPLETED') {
         updates.push("current_page = ?");
-        params.push(current_page);
+        params.push(Math.floor(Number(current_page)));
       }
       params.push(id);
 
-      if (updates.length > 0) {
-        db.prepare(`UPDATE books SET ${updates.join(", ")} WHERE id = ?`).run(...params);
-      }
-
-      // Record completion in goal_completions if transitioning to COMPLETED
-      if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
-        const year = new Date().getFullYear();
-        const bookSnap = db.prepare(
-          "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
-        ).get(id) as any;
-        db.prepare(`
-          INSERT OR IGNORE INTO goal_completions
-            (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
-          VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-        `).run(
-          year, id, new Date().toISOString(),
-          bookSnap?.title, bookSnap?.author, bookSnap?.total_pages,
-          bookSnap?.mode, bookSnap?.cover_url, bookSnap?.isbn,
-          bookSnap?.publisher, bookSnap?.publication_year
-        );
-
-        // Also snapshot any existing reflection into completion_reflections
-        const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
-        if (existingReflection) {
-          db.prepare(`
-            INSERT INTO completion_reflections
-              (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
-            VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
-            ON CONFLICT(book_id) DO UPDATE SET
-              rating=excluded.rating, content=excluded.content,
-              learning=excluded.learning, application=excluded.application,
-              disagreement=excluded.disagreement, saved_at=excluded.saved_at
-          `).run(
-            id, bookSnap?.title, bookSnap?.author,
-            existingReflection.rating, existingReflection.content,
-            existingReflection.learning, existingReflection.application,
-            existingReflection.disagreement
-          );
+      // All writes are atomic
+      db.transaction(() => {
+        if (updates.length > 0) {
+          db.prepare(`UPDATE books SET ${updates.join(", ")} WHERE id = ?`).run(...params);
         }
-      }
+
+        if (status === 'COMPLETED' && book.status !== 'COMPLETED') {
+          const year = new Date().getFullYear();
+          const bookSnap = db.prepare(
+            "SELECT title, author, total_pages, mode, cover_url, isbn, publisher, publication_year FROM books WHERE id = ?"
+          ).get(id) as any;
+          db.prepare(`
+            INSERT OR IGNORE INTO goal_completions
+              (year, book_id, completed_at, title, author, total_pages, mode, cover_url, isbn, publisher, publication_year)
+            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+          `).run(
+            year, id, new Date().toISOString(),
+            bookSnap?.title, bookSnap?.author, bookSnap?.total_pages,
+            bookSnap?.mode, bookSnap?.cover_url, bookSnap?.isbn,
+            bookSnap?.publisher, bookSnap?.publication_year
+          );
+
+          const existingReflection = db.prepare("SELECT * FROM reflections WHERE book_id = ?").get(id) as any;
+          if (existingReflection) {
+            db.prepare(`
+              INSERT INTO completion_reflections
+                (book_id, title, author, rating, content, learning, application, disagreement, saved_at)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, CURRENT_TIMESTAMP)
+              ON CONFLICT(book_id) DO UPDATE SET
+                rating=excluded.rating, content=excluded.content,
+                learning=excluded.learning, application=excluded.application,
+                disagreement=excluded.disagreement, saved_at=excluded.saved_at
+            `).run(
+              id, bookSnap?.title, bookSnap?.author,
+              existingReflection.rating, existingReflection.content,
+              existingReflection.learning, existingReflection.application,
+              existingReflection.disagreement
+            );
+          }
+        }
+      })();
 
       res.json({ success: true });
     } catch (error) {
@@ -908,10 +886,9 @@ async function startServer() {
   app.get("/api/dashboard/status", (req, res) => {
     try {
       const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
-      
-      // Logged today?
-      // Use strftime to compare only the date part of the ISO string
+      // Use UTC date string to match how ISO log timestamps are stored
+      const today = now.toISOString().split('T')[0];
+
       const loggedTodayResult = db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(today) as any;
       const pagesReadToday = loggedTodayResult?.total || 0;
 
@@ -946,13 +923,13 @@ async function startServer() {
   app.get("/api/insights", (req, res) => {
     try {
       // 1. Total books completed (immutable: from goal_completions)
-      const completedBooksCount = db.prepare("SELECT COUNT(*) as count FROM goal_completions").get().count;
+      const completedBooksCount = (db.prepare("SELECT COUNT(*) as count FROM goal_completions").get() as any).count;
 
       // 2. Total pages read (immutable: from goal_completions)
-      const totalPagesRead = db.prepare("SELECT COALESCE(SUM(total_pages), 0) as total FROM goal_completions").get().total;
+      const totalPagesRead = (db.prepare("SELECT COALESCE(SUM(total_pages), 0) as total FROM goal_completions").get() as any).total;
 
       // 3. Total reflections (immutable: from completion_reflections)
-      const totalReflections = db.prepare("SELECT COUNT(*) as count FROM completion_reflections").get().count;
+      const totalReflections = (db.prepare("SELECT COUNT(*) as count FROM completion_reflections").get() as any).count;
 
       // 4. Reading streak
       const logDates = db.prepare("SELECT DISTINCT strftime('%Y-%m-%d', date) as day FROM logs ORDER BY day DESC").all() as { day: string }[];
@@ -993,25 +970,31 @@ async function startServer() {
       const activeDaysCount = logDates.length || 1;
       const averagePagesPerDay = Math.round(totalPagesLogged / activeDaysCount);
 
-      // 6. Last 35 days trend (5 full weeks to align grid)
-      const last35Days = [];
+      // 6. Last 35 days trend — single aggregation query, UTC dates
       const now = new Date();
-      
-      // Calculate how many days to go back to start from a Sunday
-      // now.getDay() returns 0 for Sunday, 1 for Monday, etc.
-      // We want to show 5 full weeks ending with the current week's Saturday (or today)
-      // To keep it simple and consistent: 35 days ending today.
+      const trendStart = new Date(now);
+      trendStart.setDate(trendStart.getDate() - 34);
+      const trendStartStr = trendStart.toISOString().split('T')[0];
+
+      const trendRows = db.prepare(`
+        SELECT strftime('%Y-%m-%d', date) AS day, SUM(pages_read) AS total
+        FROM logs
+        WHERE strftime('%Y-%m-%d', date) >= ?
+        GROUP BY day
+      `).all(trendStartStr) as { day: string; total: number }[];
+
+      const trendMap = new Map(trendRows.map(r => [r.day, r.total]));
+
+      const last35Days = [];
       for (let i = 34; i >= 0; i--) {
         const d = new Date(now);
-        d.setDate(d.getDate() - i);
-        // Use local date to match how today's date is computed in the dashboard status endpoint
-        const dateStr = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
-        const pagesRead = (db.prepare("SELECT SUM(pages_read) as total FROM logs WHERE strftime('%Y-%m-%d', date) = ?").get(dateStr) as any).total || 0;
+        d.setUTCDate(d.getUTCDate() - i);
+        const dateStr = d.toISOString().split('T')[0];
         last35Days.push({
           day: d.toLocaleDateString(undefined, { weekday: 'short' }),
-          pages: pagesRead,
+          pages: trendMap.get(dateStr) || 0,
           fullDate: dateStr,
-          dayOfWeek: d.getDay()
+          dayOfWeek: d.getUTCDay()
         });
       }
 
@@ -1045,10 +1028,10 @@ async function startServer() {
         LIMIT 5
       `).all();
 
-      // 10. Reading Consistency Score (Last 30 days)
-      const thirtyDaysAgo = new Date();
-      thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
-      const dateLimit = `${thirtyDaysAgo.getFullYear()}-${String(thirtyDaysAgo.getMonth() + 1).padStart(2, '0')}-${String(thirtyDaysAgo.getDate()).padStart(2, '0')}`;
+      // 10. Reading Consistency Score (last 30 days, UTC)
+      const thirtyDaysAgo = new Date(now);
+      thirtyDaysAgo.setUTCDate(thirtyDaysAgo.getUTCDate() - 30);
+      const dateLimit = thirtyDaysAgo.toISOString().split('T')[0];
 
       const activeDaysResult = db.prepare(`
         SELECT COUNT(DISTINCT strftime('%Y-%m-%d', date)) as activeDays
@@ -1067,7 +1050,7 @@ async function startServer() {
 
       // Goal completions for current year
       const currentYear = new Date().getFullYear();
-      const goalCompletionsCount = db.prepare("SELECT COUNT(*) as count FROM goal_completions WHERE year = ?").get(currentYear).count || 0;
+      const goalCompletionsCount = (db.prepare("SELECT COUNT(*) as count FROM goal_completions WHERE year = ?").get(currentYear) as any).count || 0;
 
       res.json({
         stats: {
@@ -1127,7 +1110,7 @@ async function startServer() {
     });
   }
 
-  app.listen(PORT, "0.0.0.0", () => {
+  app.listen(Number(PORT), "0.0.0.0", () => {
     console.log(`--- The Archivist Server: Online at http://0.0.0.0:${PORT} ---`);
   });
   } catch (error) {

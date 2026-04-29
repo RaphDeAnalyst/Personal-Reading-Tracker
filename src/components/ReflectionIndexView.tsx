@@ -17,11 +17,16 @@ export default function ReflectionIndexView({ onSelectBook }: ReflectionIndexVie
 
   useEffect(() => {
     fetch('/api/books')
-      .then(res => res.json())
-      .then(data => {
-        setBooks(data);
-        setLoading(false);
-      });
+      .then(res => {
+        if (!res.ok) throw new Error(`Failed: ${res.status}`);
+        return res.json();
+      })
+      .then(data => setBooks(data))
+      .catch(err => {
+        console.error("Failed to load reflection index:", err);
+        // show empty state rather than infinite spinner
+      })
+      .finally(() => setLoading(false));
   }, []);
 
   const pendingBooks = books.filter(b => b.status === 'COMPLETED' && !b.is_full_reflection);

@@ -26,6 +26,9 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
   const renderTaskRef = useRef<any>(null);
 
   // Session Tracking
+  const [pdfLoadError, setPdfLoadError] = useState(false);
+
+  // Session Tracking
   const [sessionStartPage, setSessionStartPage] = useState<number | null>(null);
   const [currentLogId, setCurrentLogId] = useState<number | null>(null);
   const syncTimerRef = useRef<NodeJS.Timeout | null>(null);
@@ -42,9 +45,15 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
         setSessionStartPage(data.current_page || 0);
 
         if (data.pdf_file_path) {
-          const loadingTask = pdfjsLib.getDocument(data.pdf_file_path);
-          const pdfDoc = await loadingTask.promise;
-          setPdf(pdfDoc);
+          try {
+            const loadingTask = pdfjsLib.getDocument(data.pdf_file_path);
+            const pdfDoc = await loadingTask.promise;
+            setPdf(pdfDoc);
+          } catch (pdfErr) {
+            console.error("PDF load failed:", pdfErr);
+            setPdfLoadError(true);
+            showToast?.("Could not open the PDF file — it may have been moved or deleted", "error");
+          }
         } else {
           showToast?.("No digital manuscript found for this volume", "error");
         }
@@ -193,12 +202,16 @@ export default function PDFReader({ bookId, onBack, onFinish, showToast }: PDFRe
     );
   }
 
-  if (!book || !book.pdf_file_path) {
+  if (!book || !book.pdf_file_path || pdfLoadError) {
     return (
       <div className="fixed inset-0 z-[100] bg-background flex flex-col items-center justify-center text-center p-10">
         <Icon icon={Lock} size="xl" variant="muted" />
         <h2 className="serif-text text-3xl mb-4">Volume Unreadable.</h2>
-        <p className="text-on-surface-variant mb-10 max-w-sm">This volume lacks a digital manuscript or the connection is severed.</p>
+        <p className="text-on-surface-variant mb-10 max-w-sm">
+          {pdfLoadError
+            ? "The PDF file could not be opened. It may have been moved or deleted from the server."
+            : "This volume lacks a digital manuscript or the connection is severed."}
+        </p>
         <button onClick={onBack} className="bg-primary text-on-primary px-8 py-3 rounded-xl font-label text-xs uppercase tracking-widest font-bold">Return to Library</button>
       </div>
     );

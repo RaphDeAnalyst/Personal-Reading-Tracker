@@ -240,7 +240,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
     const tabMatch = activeTab === 'all'
       ? true
       : activeTab === 'now'
-      ? b.status === 'IN_PROGRESS' && pages > 0 && b.status !== 'COMPLETED'
+      ? b.status === 'IN_PROGRESS' && pages > 0
       : activeTab === 'next'
       ? (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && pages === 0)
       : activeTab === 'completed'
@@ -279,7 +279,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
 
   const getGroupedResults = () => {
     const groups = {
-      'Now Reading': searchResults.filter(b => b.status === 'IN_PROGRESS' && (b.current_page || 0) > 0 && b.status !== 'COMPLETED'),
+      'Now Reading': searchResults.filter(b => b.status === 'IN_PROGRESS' && (b.current_page || 0) > 0),
       'Up Next': searchResults.filter(b => (b.status === 'NOT_STARTED') || (b.status === 'IN_PROGRESS' && (b.current_page || 0) === 0)),
       'Completed': searchResults.filter(b => b.status === 'COMPLETED')
     };
@@ -526,7 +526,7 @@ export default function Dashboard({ onSelectBook, onAddBook, onLogCurrent, showT
         <section className="mt-24 bg-surface-container-low p-10 md:p-12 rounded-2xl flex flex-col lg:flex-row gap-12 items-center">
           <div className="w-full lg:w-1/2">
             <span className="font-label text-[10px] uppercase tracking-[0.2em] text-on-surface-variant block mb-4">Reading Stats</span>
-            <h3 className="serif-text text-3xl mb-4 leading-tight">Currently Reading</h3>
+            <h3 className="serif-text text-3xl mb-4 leading-tight">Library Overview</h3>
             <p className="font-body text-sm text-on-surface-variant leading-relaxed mb-6">Track your progress and write reflections as you read.</p>
             <button onClick={() => setActiveTab('completed')} className="font-label text-xs font-semibold tracking-widest uppercase text-primary hover:underline underline-offset-4 transition-all">View Completed →</button>
           </div>

@@ -82,7 +82,9 @@ export default function LogProgressView({ bookId, onBack, onSaved, onViewJournal
 
   const adjustPage = (amount: number) => {
     if (!book) return;
-    const next = Math.min(parseInt(currentPage || '0') + amount, book.total_pages);
+    // Fall back to the book's saved page if the input has been cleared
+    const base = parseInt(currentPage) || book.current_page || 0;
+    const next = Math.max(0, Math.min(base + amount, book.total_pages));
     setCurrentPage(next.toString());
   };
 

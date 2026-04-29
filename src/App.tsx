@@ -148,7 +148,8 @@ export default function App() {
       const res = await fetch('/api/books');
       if (res.ok) {
         const books: BookType[] = await res.json();
-        const active = books.find(b => b.status === 'IN_PROGRESS');
+        // Match Dashboard's criteria: IN_PROGRESS with at least one page read
+        const active = books.find(b => b.status === 'IN_PROGRESS' && (b.current_page || 0) > 0);
         setCurrentFocus(active || null);
       }
     } catch (e) {
@@ -441,9 +442,9 @@ export default function App() {
         <button
           onClick={() => currentFocus && handleResumeReading(currentFocus)}
           disabled={!currentFocus}
-          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' || view.type === 'reader' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocus ? 'opacity-30 cursor-not-allowed' : ''}`}
+          className={`flex items-center gap-3 px-6 py-2.5 rounded-xl transition-all duration-200 ${view.type === 'log-progress' ? 'bg-primary text-on-primary shadow-sm' : 'text-on-surface-variant hover:bg-surface-container-low hover:text-on-surface'} ${!currentFocus ? 'opacity-30 cursor-not-allowed' : ''}`}
         >
-          <Icon icon={PenLine} size="md" variant={view.type === 'log-progress' || view.type === 'reader' ? 'inverted' : 'inherit'} />
+          <Icon icon={PenLine} size="md" variant={view.type === 'log-progress' ? 'inverted' : 'inherit'} />
           <span className="font-label text-[10px] uppercase tracking-widest font-bold">Log Progress</span>
         </button>
         <div className="w-[1px] h-6 bg-outline-variant/20 mx-1"></div>

@@ -26,6 +26,7 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
   const [deleting, setDeleting] = useState(false);
 
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [showCompleteConfirm, setShowCompleteConfirm] = useState(false);
   const [selectedTagIds, setSelectedTagIds] = useState<number[]>([]);
   const [showTagEditor, setShowTagEditor] = useState(false);
 
@@ -388,13 +389,35 @@ export default function BookDetailView({ bookId, onBack, onLogProgress, onWriteR
               </button>
             )}
             {bookDetail.status !== 'COMPLETED' && (
-              <button
-                onClick={handleMarkAsCompleted}
-                className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-on-surface text-surface rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
-              >
-                <Icon icon={CheckCircle2} size="lg" variant="inverted" />
-                Mark as Completed
-              </button>
+              !showCompleteConfirm ? (
+                <button
+                  onClick={() => setShowCompleteConfirm(true)}
+                  className="w-full flex items-center justify-center gap-3 px-6 py-5 bg-on-surface text-surface rounded-md font-bold text-lg transition-all hover:bg-primary-dim shadow-md active:scale-[0.99] group"
+                >
+                  <Icon icon={CheckCircle2} size="lg" variant="inverted" />
+                  Mark as Completed
+                </button>
+              ) : (
+                <div className="flex flex-col gap-3 p-5 border border-outline-variant/30 rounded-md animate-in fade-in slide-in-from-top-1 duration-200">
+                  <p className="text-[11px] text-on-surface font-bold uppercase tracking-widest border-l-2 border-primary pl-3 py-1">
+                    This will mark the book as finished and record it in your archive.
+                  </p>
+                  <div className="flex gap-4">
+                    <button
+                      onClick={() => { handleMarkAsCompleted(); setShowCompleteConfirm(false); }}
+                      className="text-[10px] font-bold uppercase tracking-widest text-primary hover:underline"
+                    >
+                      Yes, Complete
+                    </button>
+                    <button
+                      onClick={() => setShowCompleteConfirm(false)}
+                      className="text-[10px] font-bold uppercase tracking-widest text-outline-variant hover:text-on-surface transition-colors"
+                    >
+                      Cancel
+                    </button>
+                  </div>
+                </div>
+              )
             )}
             {bookDetail.mode === 'PHYSICAL' && (
               <button
